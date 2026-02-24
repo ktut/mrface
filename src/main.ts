@@ -6,7 +6,6 @@ import { FaceMeshBuilder } from './character/mesh-builder/FaceMeshBuilder';
 const container = document.getElementById('canvas-container') as HTMLElement;
 const statusEl  = document.getElementById('status')           as HTMLElement;
 const uploadBtn = document.getElementById('upload-btn')        as HTMLButtonElement;
-const testBtn   = document.getElementById('test-btn')          as HTMLButtonElement;
 const fileInput = document.getElementById('file-input')        as HTMLInputElement;
 
 // ─── Core objects ─────────────────────────────────────────────────────────────
@@ -32,7 +31,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
 async function processImage(img: HTMLImageElement) {
   uploadBtn.disabled = true;
-  testBtn.disabled   = true;
 
   try {
     setStatus('Detecting face landmarks…');
@@ -53,7 +51,6 @@ async function processImage(img: HTMLImageElement) {
     setStatus('Error processing image — check the console for details.');
   } finally {
     uploadBtn.disabled = false;
-    testBtn.disabled   = false;
   }
 }
 
@@ -73,22 +70,19 @@ fileInput.addEventListener('change', async () => {
   }
 });
 
-testBtn.addEventListener('click', async () => {
-  try {
-    const img = await loadImage('/test-face.png');
-    await processImage(img);
-  } catch {
-    setStatus('Could not load test-face.png — did you copy it to public/?');
-  }
-});
-
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   try {
     setStatus('Initialising MediaPipe Face Mesh…');
     await faceCapture.init();
-    setStatus('Ready — upload a face photo or use the test photo.');
     uploadBtn.disabled = false;
+    setStatus('Loading default face…');
+    try {
+      const img = await loadImage('/test-face.png');
+      await processImage(img);
+    } catch {
+      setStatus('Ready — upload a face photo to get started.');
+    }
   } catch (err) {
     console.error('[init]', err);
     setStatus('Failed to load MediaPipe — check your internet connection.');

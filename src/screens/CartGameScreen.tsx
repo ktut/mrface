@@ -185,8 +185,8 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
       g.input.setMobileInput(mi.steer, mi.throttle, mi.brake);
       const { throttle, brake, steer } = g.input.getInput(dt);
       g.vehicle.applyInput(throttle, brake, steer);
-      g.vehicle.getWorld().step();
       g.vehicle.update(dt);
+      g.vehicle.getWorld().step();
       g.vehicle.syncToObject3D(g.kartGroup);
 
       const chassis = g.vehicle.getChassisBody();

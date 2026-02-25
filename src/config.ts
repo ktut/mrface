@@ -5,22 +5,24 @@
 export const CONFIG = {
   // ─── Hair (blonde frizzy hair head topper) ───────────────────────────────────
   HAIR: {
-    COLOR: 0xc9a87a,           // Soft warm blonde (not orange)
-    HIGHLIGHT: 0xe5d0a8,      // Lighter at tips
+    COLOR: 0xc9a87a,           // Base (used when vertex colors disabled)
+    ROOT_COLOR: 0x8b6914,      // Warmer brown at roots
+    TIP_COLOR: 0xe5d0a8,      // Blonde at tips and ends
+    TIP_BLEND_POWER: 0.55,    // Gradient curve: lower = more of the strand is blonde (0.55 = blonde extends further)
     ROUGHNESS: 0.95,
     METALNESS: 0.0,
     STRAND_COUNT: 2600,        // Instanced strands; one draw call
-    SCALE_FACTOR: 1.25,        // Overall hair scale (length + thickness); 1 = base size
+    SCALE_FACTOR: 1.55,        // Overall hair scale (length + thickness); 1 = base size
     STRAND_LENGTH: 0.22,       // Fraction of head radius (before SCALE_FACTOR)
     STRAND_RADIUS: 0.038,      // Fraction of head radius (before SCALE_FACTOR)
     STRAND_TAPER: 0.35,       // Tip radius = root * this (unused for tube)
     // Positioning on head (all in “head radius” units unless noted):
-    OFFSET_UP: 0.4,           // Move whole hair up (+) or down (-) from crown
+    OFFSET_UP: 0.2,           // Move whole hair up (+) or down (-) from crown
     OFFSET_BACK: -1.0,         // Move whole hair back (+) or forward (-)
     OFFSET_SIDE: 0.0,         // Move whole hair left (-) or right (+) in X
     ROOT_RADIUS_MIN: 0.35,    // Min fraction of head radius for root dome (crown = 0)
     ROOT_RADIUS_MAX: 0.9,     // Max fraction — how far down the sides roots go (1 = full dome)
-    ROTATION_BACK_DEGREES: -30, // Tilt hair backward (positive = toward back of head)
+    ROTATION_BACK_DEGREES: -50, // Tilt hair backward (positive = toward back of head)
   },
 
   // ─── Helmet ─────────────────────────────────────────────────────────────────
@@ -59,6 +61,8 @@ export const CONFIG = {
       WIDTH: 512,
       HEIGHT: 512,
       JPEG_QUALITY: 0.85,
+      SATURATION: 1.25,   // Boost saturation to match reference (warmer, more vibrant)
+      CONTRAST: 1.18,     // Boost contrast for clearer shadows/highlights
     },
     SKIN_SAMPLE_PATCH_SIZE: 24,
   },

@@ -347,11 +347,38 @@ export class FaceMeshBuilder {
     const strandGeo = new THREE.TubeGeometry(curve, 20, rootRad, 4, false);
     strandGeo.scale(strandLen, strandLen, strandLen);
 
+    // Vertex colors: brown at root → blonde at tip (derive t from position along curve)
+    const posAttr = strandGeo.getAttribute('position') as THREE.BufferAttribute;
+    const numVerts = posAttr.count;
+    const rootColor = new THREE.Color(CONFIG.HAIR.ROOT_COLOR);
+    const tipColor = new THREE.Color(CONFIG.HAIR.TIP_COLOR);
+    const blendPower = CONFIG.HAIR.TIP_BLEND_POWER ?? 1;
+    const colorArray = new Float32Array(numVerts * 3);
+    let yMin = Infinity, yMax = -Infinity;
+    for (let i = 0; i < numVerts; i++) {
+      const y = posAttr.getY(i);
+      if (y < yMin) yMin = y;
+      if (y > yMax) yMax = y;
+    }
+    const ySpan = yMax - yMin || 1;
+    for (let i = 0; i < numVerts; i++) {
+      const tLinear = (posAttr.getY(i) - yMin) / ySpan;
+      const t = blendPower !== 1 ? Math.pow(tLinear, blendPower) : tLinear;
+      const c = rootColor.clone().lerp(tipColor, t);
+      colorArray[i * 3] = c.r;
+      colorArray[i * 3 + 1] = c.g;
+      colorArray[i * 3 + 2] = c.b;
+    }
+    strandGeo.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+    // Match face lighting: no env map, white base so vertex colors show; same lighting as face
     const mat = new THREE.MeshStandardMaterial({
-      color:     CONFIG.HAIR.COLOR,
-      roughness: CONFIG.HAIR.ROUGHNESS,
-      metalness: CONFIG.HAIR.METALNESS,
-      side:      THREE.DoubleSide,
+      color:           0xffffff,
+      vertexColors:    true,
+      roughness:       CONFIG.HAIR.ROUGHNESS,
+      metalness:       CONFIG.HAIR.METALNESS,
+      side:            THREE.DoubleSide,
+      envMapIntensity: 0,  // face uses 0 — hair should match, not pick up sky gradient
     });
 
     const instanced = new THREE.InstancedMesh(strandGeo, mat, count);
@@ -502,6 +529,30 @@ export class FaceMeshBuilder {
     ctx.clip();
 
     ctx.drawImage(sourceImage, 0, 0, w, h);
+
+    // Apply saturation and contrast to match reference (warmer, more vibrant face)
+    const saturation: number = CONFIG.HEAD.TEXTURE.SATURATION;
+    const contrast: number = CONFIG.HEAD.TEXTURE.CONTRAST;
+    if ((saturation !== 1 || contrast !== 1) && saturation > 0) {
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        let r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+        // Contrast: (x - 0.5) * contrast + 0.5
+        r = (r - 0.5) * contrast + 0.5;
+        g = (g - 0.5) * contrast + 0.5;
+        b = (b - 0.5) * contrast + 0.5;
+        // Saturation: blend toward luminance by (1 - saturation)
+        const L = 0.299 * r + 0.587 * g + 0.114 * b;
+        r = L + (r - L) * saturation;
+        g = L + (g - L) * saturation;
+        b = L + (b - L) * saturation;
+        data[i] = Math.round(Math.max(0, Math.min(255, r * 255)));
+        data[i + 1] = Math.round(Math.max(0, Math.min(255, g * 255)));
+        data[i + 2] = Math.round(Math.max(0, Math.min(255, b * 255)));
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;

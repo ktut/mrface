@@ -61,7 +61,7 @@ Open `http://localhost:5173`.
 
 ### Test Photo
 
-Place a front-facing portrait at `public/test-face.png`.
+Place a front-facing portrait at `public/test-face.png` (child/toddler). Optionally add `public/test-face-adult.png` for adult proportions; use the "Child test" / "Adult test" buttons to switch.
 The photo works best when:
 - Face is roughly centred and fills most of the frame
 - Good even lighting, no strong shadows

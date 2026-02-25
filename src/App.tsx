@@ -67,6 +67,8 @@ export function App() {
   const [helmetHue, setHelmetHue] = useState<number>(CONFIG.HELMET.DEFAULT_HUE);
   const [characters, setCharacters] = useState<CharacterEntry[]>([]);
   const [selectedCharacterIndex, setSelectedCharacterIndex] = useState(0);
+  const [characterMenuIndex, setCharacterMenuIndex] = useState<number | null>(null);
+  const characterMenuRef = useRef<HTMLDivElement | null>(null);
 
   const applyHueToCurrentHead = useCallback((hue: number) => {
     const head = sceneManagerRef.current?.getCharacterHead();
@@ -141,7 +143,12 @@ export function App() {
           const img = await loadImage('/test-face.png');
           await processImage(img, true);
         } catch {
-          setProgress(100);
+          try {
+            const imgAdult = await loadImage('/test-face-adult.png');
+            await processImage(imgAdult, true);
+          } catch {
+            setProgress(100);
+          }
         }
       } catch (err) {
         console.error('[init]', err);
@@ -173,6 +180,7 @@ export function App() {
   const selectCharacter = useCallback(
     (index: number) => {
       if (index < 0 || index >= characters.length) return;
+      setCharacterMenuIndex(null);
       setSelectedCharacterIndex(index);
       const entry = characters[index];
       sceneManagerRef.current?.setCharacterHead(entry.headGroup);
@@ -180,6 +188,54 @@ export function App() {
     },
     [characters, helmetHue],
   );
+
+  const handleCharacterOptionClick = useCallback(
+    (index: number) => {
+      if (index === selectedCharacterIndex) {
+        setCharacterMenuIndex(index);
+      } else {
+        selectCharacter(index);
+      }
+    },
+    [selectedCharacterIndex, selectCharacter],
+  );
+
+  const handleRenameCharacter = useCallback(() => {
+    if (characterMenuIndex == null || characterMenuIndex >= characters.length) {
+      setCharacterMenuIndex(null);
+      return;
+    }
+    const currentName = characters[characterMenuIndex].name;
+    const newName = typeof window !== 'undefined' && window.prompt
+      ? window.prompt('Rename character', currentName)
+      : currentName;
+    const trimmed = newName?.trim();
+    if (trimmed) {
+      setCharacters((prev) =>
+        prev.map((c, i) => (i === characterMenuIndex ? { ...c, name: trimmed } : c)),
+      );
+    }
+    setCharacterMenuIndex(null);
+  }, [characterMenuIndex, characters]);
+
+  const handleDeleteCharacter = useCallback(() => {
+    if (characterMenuIndex == null || characterMenuIndex >= characters.length) {
+      setCharacterMenuIndex(null);
+      return;
+    }
+    const nextList = characters.filter((_, i) => i !== characterMenuIndex);
+    setCharacters(nextList);
+    setCharacterMenuIndex(null);
+    if (nextList.length === 0) {
+      setSelectedCharacterIndex(0);
+      sceneManagerRef.current?.setCharacterHead(null);
+    } else {
+      const newIndex = Math.min(characterMenuIndex, nextList.length - 1);
+      setSelectedCharacterIndex(newIndex);
+      sceneManagerRef.current?.setCharacterHead(nextList[newIndex].headGroup);
+      applyHelmetHue(nextList[newIndex].headGroup, helmetHue);
+    }
+  }, [characterMenuIndex, characters, helmetHue]);
 
   const characterPrev = useCallback(
     () => selectCharacter(selectedCharacterIndex - 1),
@@ -218,7 +274,7 @@ export function App() {
   return (
     <div className="app-shell">
       <div
-        className={`global-progress ${progress > 0 && progress < 100 ? 'global-progress--active' : ''}`}
+        className={`global-progress ${progress > 0 && progress < 100 ? 'global-progress--active' : ''} ${progress === 100 ? 'global-progress--complete' : ''}`}
         role="progressbar"
         aria-valuenow={progress}
         aria-valuemin={0}
@@ -266,6 +322,40 @@ export function App() {
           </span>
           Upload Face
         </button>
+        <div className="test-image-buttons" role="group" aria-label="Load test image">
+          <button
+            type="button"
+            className="test-image-btn"
+            onClick={async () => {
+              if (uploadDisabled) return;
+              try {
+                const img = await loadImage('/test-face.png');
+                await processImage(img, characters.length === 0);
+              } catch {
+                // ignore
+              }
+            }}
+            disabled={uploadDisabled}
+          >
+            Child test
+          </button>
+          <button
+            type="button"
+            className="test-image-btn"
+            onClick={async () => {
+              if (uploadDisabled) return;
+              try {
+                const img = await loadImage('/test-face-adult.png');
+                await processImage(img, characters.length === 0);
+              } catch {
+                // ignore
+              }
+            }}
+            disabled={uploadDisabled}
+          >
+            Adult test
+          </button>
+        </div>
         <input
           id="file-input"
           type="file"
@@ -301,9 +391,11 @@ export function App() {
                   key={char.id}
                   type="button"
                   className={`character-option ${index === selectedCharacterIndex ? 'character-option--selected' : ''}`}
-                  onClick={() => selectCharacter(index)}
+                  onClick={() => handleCharacterOptionClick(index)}
                   role="listitem"
                   aria-pressed={index === selectedCharacterIndex}
+                  aria-haspopup={index === selectedCharacterIndex}
+                  aria-expanded={characterMenuIndex === index}
                   aria-label={char.name}
                 >
                   <span className="character-option-thumb">
@@ -322,6 +414,40 @@ export function App() {
               ›
             </button>
           </div>
+        )}
+
+        {characterMenuIndex !== null && (
+          <>
+            <div
+              className="character-menu-backdrop"
+              role="presentation"
+              aria-hidden
+              onClick={() => setCharacterMenuIndex(null)}
+            />
+            <div
+              ref={characterMenuRef}
+              className="character-menu"
+              role="menu"
+              aria-label="Character options"
+            >
+              <button
+                type="button"
+                className="character-menu-btn"
+                role="menuitem"
+                onClick={handleRenameCharacter}
+              >
+                Rename
+              </button>
+              <button
+                type="button"
+                className="character-menu-btn character-menu-btn--danger"
+                role="menuitem"
+                onClick={handleDeleteCharacter}
+              >
+                Delete
+              </button>
+            </div>
+          </>
         )}
       </div>
       </div>

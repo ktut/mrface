@@ -59,6 +59,8 @@ function loadMediaPipeScript(): Promise<void> {
 export class FaceCapture {
   private faceMesh!: FaceMeshType;
   private resolveDetection?: (lm: Landmark3D[] | null) => void;
+  /** Serialize detection so results always match the image we sent (no cross-talk). */
+  private lastDetection: Promise<Landmark3D[] | null> = Promise.resolve(null);
 
   /**
    * Initialise the MediaPipe FaceMesh model.
@@ -107,12 +109,20 @@ export class FaceCapture {
   /**
    * Run face detection on a still image.
    * Returns 468 landmarks in Three.js space, or null if no face is found.
+   * Serialized so that rapid calls (e.g. Child test then Adult test) always
+   * get landmarks for the correct image, not a previous one.
    */
   async detectFromImage(img: HTMLImageElement): Promise<Landmark3D[] | null> {
-    return new Promise((resolve) => {
-      this.resolveDetection = resolve;
-      // FaceMesh.send() triggers onResults synchronously after processing.
-      void this.faceMesh.send({ image: img });
+    const prev = this.lastDetection;
+    let resolveThis!: (lm: Landmark3D[] | null) => void;
+    this.lastDetection = new Promise<Landmark3D[] | null>((resolve) => {
+      resolveThis = resolve;
     });
+    await prev;
+    this.resolveDetection = (result) => {
+      resolveThis(result);
+    };
+    void this.faceMesh.send({ image: img });
+    return this.lastDetection;
   }
 }

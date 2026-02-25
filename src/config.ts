@@ -20,14 +20,29 @@ export const CONFIG = {
 
   // ─── Head (face mesh + back shell) ───────────────────────────────────────────
   HEAD: {
+    // Face shape: child (rounder, e.g. toddler) vs adult (taller). Drives proportions.
+    FACE_SHAPE: {
+      ASPECT_CHILD_MAX: 1.15,           // height/width below this → treat as child
+      CHILD_DEPTH_FACTOR: 0.55,         // rounder head for children
+      ADULT_DEPTH_FACTOR: 0.5,          // base depth for adults
+      ADULT_ASPECT_EXTENSION: 0.28,     // extra depth for tall faces: (aspect - 1.2) * this
+      ADULT_ASPECT_THRESHOLD: 1.2,      // start extending depth above this aspect
+      ADULT_HEIGHT_EXTENSION: 0.18,     // taller mesh for adults: (aspect - 1.2) * this, cap at 0.2
+      NOSE_SCALE_CHILD: 0.88,           // softer nose for children (test-face.png style)
+      NOSE_SCALE_ADULT: 0.85,
+      CHILD_DOME_HEIGHT: 0.22,          // rounder dome for children
+      ADULT_DOME_HEIGHT: 0.18,
+      CHILD_FOREHEAD_BULGE: 0.12,
+      ADULT_FOREHEAD_BULGE: 0.1,
+    },
     BACK_SHELL: {
-      DEPTH_FACTOR: 0.5,     // Back shell depth = width * this
+      DEPTH_FACTOR: 0.5,     // Default; overridden by FACE_SHAPE for child/adult
       TAPER_MIN: 0.94,
       TAPER_MAX: 0.04,       // taper = TAPER_MIN + TAPER_MAX * tNorm
       RING1_TAPER: 0.97,
       RING2_TAPER: 0.96,
-      FOREHEAD_BULGE: 0.1,    // fraction of depth
-      DOME_HEIGHT: 0.18,     // fraction of depth
+      FOREHEAD_BULGE: 0.1,    // fraction of depth (overridden by FACE_SHAPE)
+      DOME_HEIGHT: 0.18,     // fraction of depth (overridden by FACE_SHAPE)
     },
     MATERIAL: {
       BACK_ROUGHNESS: 0.9,

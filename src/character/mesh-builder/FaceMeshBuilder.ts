@@ -64,9 +64,22 @@ const NOSE_LANDMARKS: number[] = [
   236, 248, 256, 261, 274, 275, 281, 326, 327, 419, 420, 440, 441, 456,
 ];
 
-/** Scale factor for nose size: 1.0 = original, <1 = smaller. */
-const NOSE_SCALE = 0.85;
+/** Face shape derived from landmark bbox: child (rounder, e.g. toddler) vs adult (taller). */
+export type FaceShapeKind = 'child' | 'adult';
 
+export interface FaceShape {
+  kind: FaceShapeKind;
+  aspectRatio: number;  // height / width
+}
+
+export interface HeadDimensions {
+  depth: number;
+  headRadius: number;
+  foreheadBulge: number;
+  domeHeight: number;
+  /** Vertical scale for back shell (adult: >1 for taller head). */
+  heightScale: number;
+}
 
 export class FaceMeshBuilder {
 
@@ -80,13 +93,15 @@ export class FaceMeshBuilder {
 
     report(0);
     const bbox       = this.computeBbox(landmarks);
+    const faceShape  = this.detectFaceShape(bbox);
+    const headDims   = this.getHeadDimensions(bbox, faceShape);
     const headColor  = this.sampleSkinFromRegions(sourceImage, landmarks);
     report(10);
 
-    // Build each part.
-    const faceGeo = this.buildFaceGeometry(landmarks);
+    // Build each part (face shape drives proportions: child = rounder, adult = taller).
+    const faceGeo = this.buildFaceGeometry(landmarks, faceShape);
     report(25);
-    const { sideGeo } = this.buildBackShell(landmarks, bbox);
+    const { sideGeo } = this.buildBackShell(landmarks, bbox, faceShape, headDims);
     report(45);
 
     // Merge: face (group 0) + side+cap (group 1, unified in one geometry).
@@ -117,7 +132,7 @@ export class FaceMeshBuilder {
     // Headwear: helmet only.
     const headwearGroup = new THREE.Group();
     headwearGroup.name = 'headwear';
-    const helmetMesh = await this.buildHelmet(bbox, (p) => report(55 + Math.round((p / 100) * 35)));
+    const helmetMesh = await this.buildHelmet(bbox, headDims, (p) => report(55 + Math.round((p / 100) * 35)));
     headwearGroup.add(helmetMesh);
     group.add(headwearGroup);
 
@@ -126,6 +141,54 @@ export class FaceMeshBuilder {
     group.position.set(-bbox.cx, -bbox.cy, -bbox.cz);
 
     return group;
+  }
+
+  // ── Face shape & head dimensions ─────────────────────────────────────────────
+
+  /** Classify face as child (rounder, e.g. toddler like test-face.png) or adult (taller). */
+  private detectFaceShape(bbox: ReturnType<FaceMeshBuilder['computeBbox']>): FaceShape {
+    const aspectRatio = bbox.width > 0 ? bbox.height / bbox.width : 1;
+    const kind: FaceShapeKind =
+      aspectRatio <= CONFIG.HEAD.FACE_SHAPE.ASPECT_CHILD_MAX ? 'child' : 'adult';
+    return { kind, aspectRatio };
+  }
+
+  /**
+   * Compute depth and head radius from bbox and face shape.
+   * Used by both back shell and helmet so the helmet stays aligned with the head.
+   */
+  private getHeadDimensions(
+    bbox: ReturnType<FaceMeshBuilder['computeBbox']>,
+    faceShape: FaceShape,
+  ): HeadDimensions {
+    const { width, height } = bbox;
+    const cfg = CONFIG.HEAD.FACE_SHAPE;
+
+    let depth: number;
+    let foreheadBulge: number;
+    let domeHeight: number;
+
+    let heightScale: number;
+
+    if (faceShape.kind === 'child') {
+      depth = width * cfg.CHILD_DEPTH_FACTOR;
+      foreheadBulge = cfg.CHILD_FOREHEAD_BULGE;
+      domeHeight = cfg.CHILD_DOME_HEIGHT;
+      heightScale = 1;
+    } else {
+      const extension =
+        Math.max(0, (faceShape.aspectRatio - cfg.ADULT_ASPECT_THRESHOLD) * cfg.ADULT_ASPECT_EXTENSION);
+      depth = width * cfg.ADULT_DEPTH_FACTOR * (1 + extension);
+      foreheadBulge = cfg.ADULT_FOREHEAD_BULGE;
+      domeHeight = cfg.ADULT_DOME_HEIGHT;
+      heightScale =
+        1 + Math.min(0.2, Math.max(0, (faceShape.aspectRatio - cfg.ADULT_ASPECT_THRESHOLD) * cfg.ADULT_HEIGHT_EXTENSION));
+    }
+
+    const effectiveHeight = height * heightScale;
+    const headRadius =
+      Math.sqrt(width * width + effectiveHeight * effectiveHeight + depth * depth) / 2;
+    return { depth, headRadius, foreheadBulge, domeHeight, heightScale };
   }
 
   // ── Bounding box ─────────────────────────────────────────────────────────────
@@ -166,7 +229,7 @@ export class FaceMeshBuilder {
     return count > 0 ? { x: x / count, y: y / count, z: z / count } : { x: 0, y: 0, z: 0 };
   }
 
-  private buildFaceGeometry(landmarks: Landmark3D[]): THREE.BufferGeometry {
+  private buildFaceGeometry(landmarks: Landmark3D[], faceShape: FaceShape): THREE.BufferGeometry {
     const n         = landmarks.length;
     const positions = new Float32Array(n * 3);
     const uvs       = new Float32Array(n * 2);
@@ -180,14 +243,17 @@ export class FaceMeshBuilder {
       uvs[i * 2 + 1] =  lm.y + 0.5;
     }
 
-    // Scale nose toward its center to reduce size.
+    const noseScale =
+      faceShape.kind === 'child'
+        ? CONFIG.HEAD.FACE_SHAPE.NOSE_SCALE_CHILD
+        : CONFIG.HEAD.FACE_SHAPE.NOSE_SCALE_ADULT;
     const noseCenter = this.computeNoseCenter(positions);
     for (const idx of NOSE_LANDMARKS) {
       if (idx >= n) continue;
       const i = idx * 3;
-      positions[i + 0] = noseCenter.x + (positions[i + 0] - noseCenter.x) * NOSE_SCALE;
-      positions[i + 1] = noseCenter.y + (positions[i + 1] - noseCenter.y) * NOSE_SCALE;
-      positions[i + 2] = noseCenter.z + (positions[i + 2] - noseCenter.z) * NOSE_SCALE;
+      positions[i + 0] = noseCenter.x + (positions[i + 0] - noseCenter.x) * noseScale;
+      positions[i + 1] = noseCenter.y + (positions[i + 1] - noseCenter.y) * noseScale;
+      positions[i + 2] = noseCenter.z + (positions[i + 2] - noseCenter.z) * noseScale;
     }
 
     // Fix winding: X-flip reverses CCW→CW → normals point inward without this.
@@ -214,16 +280,19 @@ export class FaceMeshBuilder {
    *   - Three rings for side wall (front → mid → back)
    *   - Single smooth dome for back cap (centre + fan to back ring)
    *   - Uniform back ring (same Z) for a smooth, rounded dome — no indentations.
+   *
+   * Child faces use rounder proportions (headDims); adult faces use taller depth.
    */
   private buildBackShell(
     landmarks: Landmark3D[],
     bbox: ReturnType<FaceMeshBuilder['computeBbox']>,
+    _faceShape: FaceShape,
+    headDims: HeadDimensions,
   ): { sideGeo: THREE.BufferGeometry } {
 
     const N     = FACE_OVAL.length;
     const { cx, cy, minZ, minY, maxY } = bbox;
-
-    const depth = bbox.width * CONFIG.HEAD.BACK_SHELL.DEPTH_FACTOR;
+    const { depth, foreheadBulge: bulgeFrac, domeHeight: domeFrac, heightScale } = headDims;
 
     const front: Landmark3D[] = FACE_OVAL.map(i => landmarks[i]);
 
@@ -233,20 +302,24 @@ export class FaceMeshBuilder {
     const taperAt = (lm: Landmark3D) =>
       CONFIG.HEAD.BACK_SHELL.TAPER_MIN + CONFIG.HEAD.BACK_SHELL.TAPER_MAX * tNorm(lm);
 
-    const foreheadBulge = depth * CONFIG.HEAD.BACK_SHELL.FOREHEAD_BULGE;
+    const foreheadBulge = depth * bulgeFrac;
     const foreheadAt = (lm: Landmark3D) => {
       const t = tNorm(lm);
       return t * foreheadBulge;
     };
+
+    /** Scale Y around cy for taller adult heads (heightScale > 1). */
+    const scaleY = (y: number) => cy + (y - cy) * heightScale;
 
     // Four rings for smoother ovoid profile.
     const ring1Z = minZ - depth * 0.33;
     const ring1: Landmark3D[] = front.map(lm => {
       const t = tNorm(lm);
       const taper = CONFIG.HEAD.BACK_SHELL.RING1_TAPER + 0.02 * t;
+      const y = cy + (lm.y - cy) * taper + foreheadAt(lm);
       return {
         x: cx + (lm.x - cx) * taper,
-        y: cy + (lm.y - cy) * taper + foreheadAt(lm),
+        y: scaleY(y),
         z: ring1Z,
       };
     });
@@ -255,22 +328,26 @@ export class FaceMeshBuilder {
     const ring2: Landmark3D[] = front.map(lm => {
       const t = tNorm(lm);
       const taper = CONFIG.HEAD.BACK_SHELL.RING2_TAPER + 0.02 * t;
+      const y = cy + (lm.y - cy) * taper + foreheadAt(lm);
       return {
         x: cx + (lm.x - cx) * taper,
-        y: cy + (lm.y - cy) * taper + foreheadAt(lm),
+        y: scaleY(y),
         z: ring2Z,
       };
     });
 
     const backZ = minZ - depth;
-    const back: Landmark3D[] = front.map(lm => ({
-      x: cx + (lm.x - cx) * taperAt(lm),
-      y: cy + (lm.y - cy) * taperAt(lm) + foreheadAt(lm),
-      z: backZ,
-    }));
+    const back: Landmark3D[] = front.map(lm => {
+      const y = cy + (lm.y - cy) * taperAt(lm) + foreheadAt(lm);
+      return {
+        x: cx + (lm.x - cx) * taperAt(lm),
+        y: scaleY(y),
+        z: backZ,
+      };
+    });
 
     // Dome centre behind back ring — creates convex (outward) curve, not concave.
-    const domeHeight = depth * CONFIG.HEAD.BACK_SHELL.DOME_HEIGHT;
+    const domeHeight = depth * domeFrac;
     const centreZ = backZ - domeHeight;
     const centreIdx = 4 * N;
 
@@ -286,7 +363,7 @@ export class FaceMeshBuilder {
       shellPos.push(back[i].x, back[i].y, back[i].z);
       shellUV.push(0, 0, 0, 0, 0, 0, 0, 0);
     }
-    shellPos.push(cx, cy + foreheadBulge * 0.5, centreZ);
+    shellPos.push(cx, scaleY(cy + foreheadBulge * 0.5), centreZ);
     shellUV.push(0, 0);
 
     const addQuad = (a: number, b: number, c: number, d: number, onRight: boolean) => {
@@ -320,16 +397,16 @@ export class FaceMeshBuilder {
 
   /**
    * Load the Sfera helmet OBJ model, scale and position it to fit the head.
-   * Model from 3ds Max: Y-up OBJ, opening may face +Z or -Z. Try rotations to align.
+   * Uses headDims from the same face-shape logic as the back shell so the helmet
+   * stays correctly aligned for both child (rounder) and adult (taller) heads.
    */
   private async buildHelmet(
     bbox: ReturnType<FaceMeshBuilder['computeBbox']>,
+    headDims: HeadDimensions,
     onProgress?: (percent: number) => void,
   ): Promise<THREE.Group> {
     const { cx, cy, cz } = bbox;
-    const width = bbox.width;
-    const depth = width * 0.5;
-    const headRadius = Math.sqrt(width * width + bbox.height * bbox.height + depth * depth) / 2;
+    const headRadius = headDims.headRadius;
 
     const loader = new OBJLoader();
     const helmetObj = await new Promise<THREE.Group>((resolve, reject) => {

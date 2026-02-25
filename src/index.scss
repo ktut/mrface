@@ -48,6 +48,15 @@ body {
   animation: global-progress-pulse 1.4s ease-in-out infinite;
 }
 
+.global-progress--complete .global-progress-track {
+  background: transparent;
+}
+
+.global-progress--complete .global-progress-fill {
+  background: transparent;
+  box-shadow: none;
+}
+
 @keyframes global-progress-pulse {
   0%,
   100% {
@@ -323,6 +332,89 @@ body {
   }
 }
 
+.test-image-buttons {
+  display: flex;
+  gap: v.$space-xs;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.test-image-btn {
+  padding: v.$space-xs v.$space-sm;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: v.$radius-sm;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background v.$transition-fast, opacity v.$transition-base;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  &:disabled {
+    opacity: v.$color-btn-disabled-opacity;
+    cursor: not-allowed;
+  }
+}
+
 #file-input {
   display: none;
+}
+
+.character-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: v.$z-overlay;
+  background: transparent;
+  cursor: pointer;
+}
+
+.character-menu {
+  position: fixed;
+  bottom: calc(v.$space-xl + 5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: v.$z-overlay + 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: v.$space-xxs;
+  background: v.$color-surface;
+  border: 1px solid v.$color-border;
+  border-radius: v.$space-sm;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.character-menu-btn {
+  padding: v.$space-sm v.$space-md;
+  min-height: 2.75rem;
+  border: none;
+  border-radius: v.$space-xs;
+  background: transparent;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-base;
+  text-align: left;
+  cursor: pointer;
+  transition: background v.$transition-base;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    background: v.$color-border-hover;
+  }
+
+  &:active {
+    background: v.$color-border;
+  }
+
+  &.character-menu-btn--danger {
+    color: #f66;
+  }
+
+  &.character-menu-btn--danger:hover {
+    background: rgba(255, 80, 80, 0.15);
+  }
 }

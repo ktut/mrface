@@ -163,19 +163,23 @@ export class SceneManager {
 
   /**
    * Replace the placeholder / previous head with a freshly built face group.
-   * Accepts any Object3D (typically the THREE.Group from FaceMeshBuilder.build()).
+   * Pass null to clear the character and restore the placeholder.
    */
-  setCharacterHead(head: THREE.Object3D) {
-    // Remove existing objects
+  setCharacterHead(head: THREE.Object3D | null) {
     const existing    = this.scene.getObjectByName('characterHead');
     const placeholder = this.scene.getObjectByName('placeholder');
-    if (existing)    this.scene.remove(existing);
+    if (existing) this.scene.remove(existing);
     if (placeholder) this.scene.remove(placeholder);
 
-    head.name = 'characterHead';
-    this.scene.add(head);
-
-    this.currentHead = head;
+    if (head) {
+      if (existing) head.rotation.copy(existing.rotation);
+      head.name = 'characterHead';
+      this.scene.add(head);
+      this.currentHead = head;
+    } else {
+      this.currentHead = null;
+      this.addPlaceholder();
+    }
     this.controls.target.set(0, 0, 0);
   }
 

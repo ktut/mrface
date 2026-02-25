@@ -43,10 +43,13 @@ export class SceneManager {
 
     // ── Controls ──────────────────────────────────────────────────────────────
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping  = true;
-    this.controls.dampingFactor  = CONFIG.SCENE.CONTROLS.DAMPING_FACTOR;
-    this.controls.minDistance    = CONFIG.SCENE.CONTROLS.MIN_DISTANCE;
-    this.controls.maxDistance    = CONFIG.SCENE.CONTROLS.MAX_DISTANCE;
+    this.controls.enablePan       = false;  // no panning — rotate and zoom only
+    this.controls.minPolarAngle   = Math.PI / 2;  // lock to horizontal plane
+    this.controls.maxPolarAngle   = Math.PI / 2;  // no tilt — rotate only around vertical axis
+    this.controls.enableDamping   = true;
+    this.controls.dampingFactor   = CONFIG.SCENE.CONTROLS.DAMPING_FACTOR;
+    this.controls.minDistance     = CONFIG.SCENE.CONTROLS.MIN_DISTANCE;
+    this.controls.maxDistance     = CONFIG.SCENE.CONTROLS.MAX_DISTANCE;
     this.controls.target.set(0, 0, 0);
 
     // ── Lights ────────────────────────────────────────────────────────────────

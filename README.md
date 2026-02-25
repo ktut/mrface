@@ -146,7 +146,7 @@ await fetch('/api/characters', {
 
 ### Character Build Pipeline
 - **Face mask**: Always from a photo facing up, correct direction. No face rotation.
-- **Headwear**: Helmet, hair, etc. wrap around the face. Swappable via the `headwear` group.
+- **Headwear**: Helmet wraps around the face. Lives in the `headwear` group.
 - **Persistence**: Final character saved to local storage for use in kart, racing, etc.
 
 ### Back of Head

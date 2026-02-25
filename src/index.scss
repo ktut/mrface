@@ -18,24 +18,160 @@ body {
   inset: 0;
 }
 
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.global-progress {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 0 v.$space-sm;
+}
+
+.global-progress-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: v.$radius-pill;
+  overflow: hidden;
+}
+
+.global-progress-fill {
+  height: 100%;
+  background: white;
+  border-radius: v.$radius-pill;
+  transition: width 0.15s ease-out;
+}
+
+.global-progress--active .global-progress-fill {
+  animation: global-progress-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes global-progress-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    opacity: 0.92;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
+  }
+}
+
+.app-title {
+  flex-shrink: 0;
+  padding: v.$space-sm v.$space-md;
+  font-size: v.$font-size-lg;
+  font-weight: v.$font-weight-normal;
+  color: v.$color-text;
+  margin: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
 .canvas-container {
-  position: fixed;
+  position: absolute;
   inset: 0;
 }
 
-.head-topper-control {
-  position: fixed;
-  top: v.$space-md;
+.helmet-hue-control {
+  position: absolute;
+  top: v.$space-xl;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: v.$space-xs;
   padding: v.$space-xs v.$space-md;
   background: v.$color-surface;
   border-radius: v.$radius-pill;
   border: 1px solid v.$color-border;
   z-index: v.$z-overlay;
+}
+
+.helmet-hue-slider {
+  --thumb-hue: 220;
+  --thumb-size: 2.25rem;
+  --rail-height: 0.5rem;
+  width: min(200px, 40vw);
+  height: var(--thumb-size);
+  cursor: pointer;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  box-sizing: content-box;
+  padding: 0;
+  margin: 0;
+
+  /* Track same height as thumb so browser aligns them; rail drawn as thin strip in center */
+  &::-webkit-slider-runnable-track {
+    height: var(--thumb-size);
+    background: linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(50% - var(--rail-height) / 2),
+      v.$color-border calc(50% - var(--rail-height) / 2),
+      v.$color-border calc(50% + var(--rail-height) / 2),
+      transparent calc(50% + var(--rail-height) / 2),
+      transparent 100%
+    );
+    border-radius: v.$radius-pill;
+  }
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    margin-top: 0;
+    border-radius: 50%;
+    background: unquote("hsl(var(--thumb-hue), 65%, 50%)");
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  &::-moz-range-track {
+    height: var(--thumb-size);
+    background: linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(50% - var(--rail-height) / 2),
+      v.$color-border calc(50% - var(--rail-height) / 2),
+      v.$color-border calc(50% + var(--rail-height) / 2),
+      transparent calc(50% + var(--rail-height) / 2),
+      transparent 100%
+    );
+    border-radius: v.$radius-pill;
+  }
+
+  &::-moz-range-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    border-radius: 50%;
+    background: unquote("hsl(var(--thumb-hue), 65%, 50%)");
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+}
+
+.character-swiper {
+  display: flex;
+  align-items: center;
+  gap: v.$space-xs;
+  padding: v.$space-xs v.$space-sm;
+  background: v.$color-surface;
+  border-radius: v.$radius-pill;
+  border: 1px solid v.$color-border;
 
   > button:first-of-type,
   > button:last-of-type {
@@ -53,13 +189,18 @@ body {
     cursor: pointer;
     transition: background v.$transition-base;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: v.$color-border-hover;
+    }
+
+    &:disabled {
+      opacity: v.$color-btn-disabled-opacity;
+      cursor: not-allowed;
     }
   }
 }
 
-.head-topper-strip {
+.character-strip {
   display: flex;
   align-items: stretch;
   gap: v.$space-sm;
@@ -76,7 +217,7 @@ body {
   }
 }
 
-.topper-option {
+.character-option {
   flex-shrink: 0;
   scroll-snap-align: center;
   display: flex;
@@ -84,7 +225,7 @@ body {
   align-items: center;
   gap: v.$space-xxs;
   padding: v.$space-xs v.$space-sm;
-  min-width: 5.5rem;
+  min-width: 4.5rem;
   background: transparent;
   border: 2px solid transparent;
   border-radius: v.$space-sm;
@@ -99,28 +240,31 @@ body {
     background: v.$color-border;
   }
 
-  &.topper-option--selected {
+  &.character-option--selected {
     border-color: v.$color-primary;
     color: v.$color-text;
     background: rgba(v.$color-primary, 0.12);
   }
 }
 
-.topper-option-icon-wrap {
-  width: 2rem;
-  height: 2rem;
+.character-option-thumb {
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: v.$space-xs;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: v.$color-border;
 
-  svg {
+  img {
     width: 100%;
     height: 100%;
+    object-fit: cover;
   }
 }
 
-.topper-option-label {
+.character-option-label {
   text-align: center;
   line-height: 1.2;
   max-width: 100%;
@@ -130,7 +274,7 @@ body {
 }
 
 .ui-overlay {
-  position: fixed;
+  position: absolute;
   bottom: v.$space-xl;
   left: 50%;
   transform: translateX(-50%);
@@ -141,14 +285,10 @@ body {
   z-index: v.$z-overlay;
 }
 
-.status {
-  font-size: v.$font-size-xs;
-  color: v.$color-text-muted;
-  min-height: 1.2em;
-  letter-spacing: v.$letter-spacing-tight;
-}
-
 .upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-sm;
   padding: v.$space-sm v.$space-xl;
   background: v.$color-primary;
   border: none;
@@ -169,6 +309,17 @@ body {
   &:disabled {
     opacity: v.$color-btn-disabled-opacity;
     cursor: not-allowed;
+  }
+}
+
+.upload-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 }
 

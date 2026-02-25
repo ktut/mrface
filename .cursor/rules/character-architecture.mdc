@@ -12,22 +12,22 @@ alwaysApply: false
 - No rotation or orientation correction needed for the face
 - MediaPipe landmarks → face mesh + back shell → centered at origin
 
-## Headwear (Swappable)
+## Headwear
 
-- Helmet, hair, etc. wrap around the face mask
+- Helmet wraps around the face mask
 - Lives in the `headwear` group — swap by clearing and adding a new mesh
-- Each headwear type (helmet, hair) must be oriented to align with the face
+- Helmet must be oriented to align with the face
 
 ```ts
 const headwear = characterHead.getObjectByName('headwear');
 headwear.clear();
-headwear.add(newHairMesh);
+headwear.add(newHelmetMesh);
 ```
 
 ## Persistence & Flow
 
 1. User uploads face photo → face mask built
-2. User selects headwear (helmet, hair, etc.)
+2. Helmet hue is configurable via UI
 3. Final character saved to **local storage**
 4. Character used in additional steps (kart, racing, etc.)
 
@@ -36,5 +36,5 @@ headwear.add(newHairMesh);
 ```
 characterHead (group)
 ├── head (group)        — face mesh + back shell
-└── headwear (group)    — helmet | hair | etc. (swappable)
+└── headwear (group)    — helmet (swappable)
 ```

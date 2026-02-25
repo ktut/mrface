@@ -73,21 +73,29 @@ export class FaceMeshBuilder {
   async build(
     landmarks: Landmark3D[],
     sourceImage: HTMLImageElement,
+    onProgress?: (percent: number) => void,
   ): Promise<THREE.Group> {
     const group = new THREE.Group();
+    const report = (p: number) => onProgress?.(p);
 
+    report(0);
     const bbox       = this.computeBbox(landmarks);
     const headColor  = this.sampleSkinFromRegions(sourceImage, landmarks);
+    report(10);
 
     // Build each part.
     const faceGeo = this.buildFaceGeometry(landmarks);
+    report(25);
     const { sideGeo } = this.buildBackShell(landmarks, bbox);
+    report(45);
 
     // Merge: face (group 0) + side+cap (group 1, unified in one geometry).
     const merged = mergeGeometries([faceGeo, sideGeo], true);
     merged.computeVertexNormals();
+    report(50);
 
     const faceMat = this.buildFaceMaterial(sourceImage, landmarks, headColor);
+    report(55);
     const backMat = new THREE.MeshStandardMaterial({
       color:           headColor,
       roughness:       CONFIG.HEAD.MATERIAL.BACK_ROUGHNESS,
@@ -106,19 +114,14 @@ export class FaceMeshBuilder {
     headGroup.add(headMesh);
     group.add(headGroup);
 
-    // Headwear (hair default, helmet) — both built, one visible; swappable.
+    // Headwear: helmet only.
     const headwearGroup = new THREE.Group();
     headwearGroup.name = 'headwear';
-    const [hairMesh, helmetMesh] = await Promise.all([
-      this.buildBlondeFrizzyHair(bbox),
-      this.buildHelmet(bbox),
-    ]);
-    hairMesh.visible = true;
-    helmetMesh.visible = false;
-    headwearGroup.add(hairMesh);
+    const helmetMesh = await this.buildHelmet(bbox, (p) => report(55 + Math.round((p / 100) * 35)));
     headwearGroup.add(helmetMesh);
     group.add(headwearGroup);
 
+    report(100);
     // Shift so the face centre is at the scene origin.
     group.position.set(-bbox.cx, -bbox.cy, -bbox.cz);
 
@@ -313,134 +316,6 @@ export class FaceMeshBuilder {
     return { sideGeo: shellGeo };
   }
 
-  // ── Blonde frizzy hair (instanced strands, one draw call) ────────────────────
-
-  /**
-   * Build hair from many instanced strands (one draw call). Roots on crown and
-   * top/sides of head only; strands are curved/wavy and randomly tilted for a frizzy look.
-   */
-  private buildBlondeFrizzyHair(
-    bbox: ReturnType<FaceMeshBuilder['computeBbox']>,
-  ): THREE.Group {
-    const { cx, cz } = bbox;
-    const width = bbox.width;
-    const depth = width * 0.5;
-    const height = bbox.height;
-    const headRadius = Math.sqrt(width * width + height * height + depth * depth) / 2;
-    const maxY = bbox.maxY;
-
-    const count = CONFIG.HAIR.STRAND_COUNT;
-    const scaleFactor = CONFIG.HAIR.SCALE_FACTOR;
-    const strandLen = headRadius * CONFIG.HAIR.STRAND_LENGTH * scaleFactor;
-    const rootRad = headRadius * CONFIG.HAIR.STRAND_RADIUS * scaleFactor;
-
-    // Single strand: curved tube (wavy) along Y, root at origin; curve bends so it’s not straight
-    // Gentle, soft curve so strands look like hair, not stiff spaghetti
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.06, 0.2, 0.04),
-      new THREE.Vector3(-0.05, 0.4, 0.08),
-      new THREE.Vector3(0.07, 0.6, -0.03),
-      new THREE.Vector3(-0.04, 0.78, 0.05),
-      new THREE.Vector3(0.05, 0.92, -0.02),
-      new THREE.Vector3(0, 1, 0),
-    ], false);
-    const tubularSegments = CONFIG.HAIR.TUBULAR_SEGMENTS ?? 28;
-    const radialSegments = CONFIG.HAIR.RADIAL_SEGMENTS ?? 6;
-    const strandGeo = new THREE.TubeGeometry(curve, tubularSegments, rootRad, radialSegments, false);
-    strandGeo.scale(strandLen, strandLen, strandLen);
-
-    // Vertex colors: brown at root → blonde at tip (derive t from position along curve)
-    const posAttr = strandGeo.getAttribute('position') as THREE.BufferAttribute;
-    const numVerts = posAttr.count;
-    const rootColor = new THREE.Color(CONFIG.HAIR.ROOT_COLOR);
-    const tipColor = new THREE.Color(CONFIG.HAIR.TIP_COLOR);
-    const blendPower: number = CONFIG.HAIR.TIP_BLEND_POWER ?? 1;
-    const colorArray = new Float32Array(numVerts * 3);
-    let yMin = Infinity, yMax = -Infinity;
-    for (let i = 0; i < numVerts; i++) {
-      const y = posAttr.getY(i);
-      if (y < yMin) yMin = y;
-      if (y > yMax) yMax = y;
-    }
-    const ySpan = yMax - yMin || 1;
-    for (let i = 0; i < numVerts; i++) {
-      const tLinear = (posAttr.getY(i) - yMin) / ySpan;
-      const t = blendPower !== 1 ? Math.pow(tLinear, blendPower) : tLinear;
-      const c = rootColor.clone().lerp(tipColor, t);
-      colorArray[i * 3] = c.r;
-      colorArray[i * 3 + 1] = c.g;
-      colorArray[i * 3 + 2] = c.b;
-    }
-    strandGeo.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
-
-    // Match face lighting: no env map, white base so vertex colors show; same lighting as face
-    const mat = new THREE.MeshStandardMaterial({
-      color:           0xffffff,
-      vertexColors:    true,
-      roughness:       CONFIG.HAIR.ROUGHNESS,
-      metalness:       CONFIG.HAIR.METALNESS,
-      side:            THREE.DoubleSide,
-      envMapIntensity: 0,  // face uses 0 — hair should match, not pick up sky gradient
-    });
-
-    const instanced = new THREE.InstancedMesh(strandGeo, mat, count);
-    instanced.name = 'hair-mesh';
-    instanced.castShadow = true;
-    instanced.receiveShadow = true;
-
-    const up = new THREE.Vector3(0, 1, 0);
-    const pos = new THREE.Vector3();
-    const quat = new THREE.Quaternion();
-    const scale = new THREE.Vector3(1, 1, 1);
-    const matrix = new THREE.Matrix4();
-
-    // Roots on upper hemisphere; strand direction = flow (down + back), not radial — avoids "electrocuted" look
-    const headCenterY = -headRadius;
-    const headCenter = new THREE.Vector3(0, headCenterY, 0);
-
-    for (let i = 0; i < count; i++) {
-      const u = Math.random();
-      const v = Math.random();
-      const phi = u * (Math.PI / 2); // 0 to PI/2 = crown and top/sides of head (not chin/neck)
-      const theta = v * Math.PI * 2;
-      const r = headRadius * (CONFIG.HAIR.ROOT_RADIUS_MIN + (CONFIG.HAIR.ROOT_RADIUS_MAX - CONFIG.HAIR.ROOT_RADIUS_MIN) * Math.random());
-      pos.set(
-        r * Math.sin(phi) * Math.cos(theta),
-        headCenterY + r * Math.cos(phi),
-        r * Math.sin(phi) * Math.sin(theta),
-      );
-      // Flow downward and slightly back (like gravity), with per-strand variation — not radial outward
-      const flow = new THREE.Vector3(
-        (Math.random() - 0.2) * 0.8,
-        -0.28 - Math.random() * 0.12,
-        -0.25 - Math.random() * 0.5,
-      ).normalize();
-      quat.setFromUnitVectors(up, flow);
-      const twist = (Math.random() - 0.5) * 0.7;
-      const tilt = (Math.random() - 0.5) * 0.7;
-      const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, twist, (Math.random() - 0.5) * 0.35));
-      quat.premultiply(q2);
-      const lenScale = 0.7 + 0.6 * Math.random();
-      scale.set(1, lenScale, 1);
-      matrix.compose(pos, quat, scale);
-      instanced.setMatrixAt(i, matrix);
-    }
-    instanced.instanceMatrix.needsUpdate = true;
-
-    const hairGroup = new THREE.Group();
-    hairGroup.name = 'hair';
-    hairGroup.add(instanced);
-    // Positioning: crown at (cx, maxY, cz); adjust via CONFIG.HAIR.OFFSET_* in config.ts
-    hairGroup.position.set(
-      cx + CONFIG.HAIR.OFFSET_SIDE * headRadius,
-      maxY + CONFIG.HAIR.OFFSET_UP * headRadius,
-      cz + CONFIG.HAIR.OFFSET_BACK * headRadius,
-    );
-    hairGroup.rotation.x = CONFIG.HAIR.ROTATION_BACK_DEGREES * (Math.PI / 180);
-    return hairGroup;
-  }
-
   // ── Helmet (loaded from OBJ model) ────────────────────────────────────────────
 
   /**
@@ -449,6 +324,7 @@ export class FaceMeshBuilder {
    */
   private async buildHelmet(
     bbox: ReturnType<FaceMeshBuilder['computeBbox']>,
+    onProgress?: (percent: number) => void,
   ): Promise<THREE.Group> {
     const { cx, cy, cz } = bbox;
     const width = bbox.width;
@@ -456,7 +332,18 @@ export class FaceMeshBuilder {
     const headRadius = Math.sqrt(width * width + bbox.height * bbox.height + depth * depth) / 2;
 
     const loader = new OBJLoader();
-    const helmetObj = await loader.loadAsync(CONFIG.HELMET.OBJ_URL);
+    const helmetObj = await new Promise<THREE.Group>((resolve, reject) => {
+      loader.load(
+        CONFIG.HELMET.OBJ_URL,
+        resolve,
+        (xhr) => {
+          if (xhr.lengthComputable && onProgress) {
+            onProgress((xhr.loaded / xhr.total) * 100);
+          }
+        },
+        reject,
+      );
+    });
 
     const box = new THREE.Box3().setFromObject(helmetObj);
     const helmetSize = box.getSize(new THREE.Vector3());
@@ -519,7 +406,7 @@ export class FaceMeshBuilder {
     ctx.fillStyle = `rgb(${Math.round(skinColor.r * 255)},${Math.round(skinColor.g * 255)},${Math.round(skinColor.b * 255)})`;
     ctx.fillRect(0, 0, w, h);
 
-    // Clip to face oval (slightly inset to avoid hair/black at perimeter).
+    // Clip to face oval (slightly inset at perimeter).
     const inset = CONFIG.HEAD.MATERIAL.FACE_OVAL_INSET;
     const uvPath = FACE_OVAL.map(i => {
       const lm = landmarks[i];

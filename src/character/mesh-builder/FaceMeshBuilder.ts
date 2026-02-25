@@ -39,10 +39,9 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { CONFIG } from '../../config';
 import type { Landmark3D } from '../face-capture/FaceCapture';
 import { TRIANGULATION } from './triangulation';
-
-const HELMET_OBJ_URL = '/models/Helmet__Sfera_v1_L1.123c237682f7-5c65-4abc-81fb-c187b7186453/18893_Helmet-Sfera_v1.obj';
 
 /**
  * Ordered ring of MediaPipe landmark indices that trace the face oval boundary.
@@ -54,6 +53,19 @@ const FACE_OVAL: number[] = [
   397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
   172,  58, 132,  93, 234, 127, 162,  21,  54, 103,  67, 109,
 ];
+
+/**
+ * MediaPipe landmark indices for the nose region (tip, bridge, corners, sides).
+ * Source: tfjs-models face-landmarks-detection keypoints + triangulation connections.
+ * Used to scale the nose toward its center for size adjustment.
+ */
+const NOSE_LANDMARKS: number[] = [
+  1, 2, 3, 4, 5, 6, 19, 44, 94, 97, 98, 99, 122, 168, 195, 196, 197, 198,
+  236, 248, 256, 261, 274, 275, 281, 326, 327, 419, 420, 440, 441, 456,
+];
+
+/** Scale factor for nose size: 1.0 = original, <1 = smaller. */
+const NOSE_SCALE = 0.85;
 
 
 export class FaceMeshBuilder {
@@ -77,10 +89,11 @@ export class FaceMeshBuilder {
 
     const faceMat = this.buildFaceMaterial(sourceImage, landmarks, headColor);
     const backMat = new THREE.MeshStandardMaterial({
-      color:     headColor,
-      roughness: 0.9,
-      metalness: 0.0,
-      side:      THREE.DoubleSide,  // back cap + side wall visible from all angles
+      color:           headColor,
+      roughness:       CONFIG.HEAD.MATERIAL.BACK_ROUGHNESS,
+      metalness:       CONFIG.HEAD.MATERIAL.BACK_METALNESS,
+      side:             THREE.DoubleSide,  // back cap + side wall visible from all angles
+      envMapIntensity: 0,  // scene.environment is for helmet; face uses only scene lights
     });
 
     const headMesh = new THREE.Mesh(merged, [faceMat, backMat]);
@@ -128,6 +141,21 @@ export class FaceMeshBuilder {
 
   // ── Face surface geometry (group 0) ──────────────────────────────────────────
 
+  /** Compute nose centroid from positions (for scaling toward center). */
+  private computeNoseCenter(positions: Float32Array): { x: number; y: number; z: number } {
+    const core = [1, 2, 3, 4, 5, 6, 98, 327]; // tip, bottom, bridge, corners
+    let x = 0, y = 0, z = 0;
+    let count = 0;
+    for (const idx of core) {
+      const i = idx * 3;
+      if (i + 2 < positions.length) {
+        x += positions[i]; y += positions[i + 1]; z += positions[i + 2];
+        count++;
+      }
+    }
+    return count > 0 ? { x: x / count, y: y / count, z: z / count } : { x: 0, y: 0, z: 0 };
+  }
+
   private buildFaceGeometry(landmarks: Landmark3D[]): THREE.BufferGeometry {
     const n         = landmarks.length;
     const positions = new Float32Array(n * 3);
@@ -140,6 +168,16 @@ export class FaceMeshBuilder {
       positions[i * 3 + 2] = lm.z;
       uvs[i * 2 + 0] = -lm.x + 0.5;
       uvs[i * 2 + 1] =  lm.y + 0.5;
+    }
+
+    // Scale nose toward its center to reduce size.
+    const noseCenter = this.computeNoseCenter(positions);
+    for (const idx of NOSE_LANDMARKS) {
+      if (idx >= n) continue;
+      const i = idx * 3;
+      positions[i + 0] = noseCenter.x + (positions[i + 0] - noseCenter.x) * NOSE_SCALE;
+      positions[i + 1] = noseCenter.y + (positions[i + 1] - noseCenter.y) * NOSE_SCALE;
+      positions[i + 2] = noseCenter.z + (positions[i + 2] - noseCenter.z) * NOSE_SCALE;
     }
 
     // Fix winding: X-flip reverses CCW→CW → normals point inward without this.
@@ -175,18 +213,17 @@ export class FaceMeshBuilder {
     const N     = FACE_OVAL.length;
     const { cx, cy, minZ, minY, maxY } = bbox;
 
-    const depth = bbox.width * 0.5;
+    const depth = bbox.width * CONFIG.HEAD.BACK_SHELL.DEPTH_FACTOR;
 
     const front: Landmark3D[] = FACE_OVAL.map(i => landmarks[i]);
 
     const yRange = Math.max(maxY - minY, 0.01);
     const tNorm = (lm: Landmark3D) => (lm.y - minY) / yRange;
 
-    // Uniform ovoid taper: 0.94–0.98 for smooth, egg-like profile.
-    const taperAt = (lm: Landmark3D) => 0.94 + 0.04 * tNorm(lm);
+    const taperAt = (lm: Landmark3D) =>
+      CONFIG.HEAD.BACK_SHELL.TAPER_MIN + CONFIG.HEAD.BACK_SHELL.TAPER_MAX * tNorm(lm);
 
-    // Forehead bulge: gentle curve (smoother than t²).
-    const foreheadBulge = depth * 0.1;
+    const foreheadBulge = depth * CONFIG.HEAD.BACK_SHELL.FOREHEAD_BULGE;
     const foreheadAt = (lm: Landmark3D) => {
       const t = tNorm(lm);
       return t * foreheadBulge;
@@ -196,7 +233,7 @@ export class FaceMeshBuilder {
     const ring1Z = minZ - depth * 0.33;
     const ring1: Landmark3D[] = front.map(lm => {
       const t = tNorm(lm);
-      const taper = 0.97 + 0.02 * t;
+      const taper = CONFIG.HEAD.BACK_SHELL.RING1_TAPER + 0.02 * t;
       return {
         x: cx + (lm.x - cx) * taper,
         y: cy + (lm.y - cy) * taper + foreheadAt(lm),
@@ -207,7 +244,7 @@ export class FaceMeshBuilder {
     const ring2Z = minZ - depth * 0.66;
     const ring2: Landmark3D[] = front.map(lm => {
       const t = tNorm(lm);
-      const taper = 0.96 + 0.02 * t;
+      const taper = CONFIG.HEAD.BACK_SHELL.RING2_TAPER + 0.02 * t;
       return {
         x: cx + (lm.x - cx) * taper,
         y: cy + (lm.y - cy) * taper + foreheadAt(lm),
@@ -223,7 +260,7 @@ export class FaceMeshBuilder {
     }));
 
     // Dome centre behind back ring — creates convex (outward) curve, not concave.
-    const domeHeight = depth * 0.18;
+    const domeHeight = depth * CONFIG.HEAD.BACK_SHELL.DOME_HEIGHT;
     const centreZ = backZ - domeHeight;
     const centreIdx = 4 * N;
 
@@ -284,13 +321,13 @@ export class FaceMeshBuilder {
     const headRadius = Math.sqrt(width * width + bbox.height * bbox.height + depth * depth) / 2;
 
     const loader = new OBJLoader();
-    const helmetObj = await loader.loadAsync(HELMET_OBJ_URL);
+    const helmetObj = await loader.loadAsync(CONFIG.HELMET.OBJ_URL);
 
     const box = new THREE.Box3().setFromObject(helmetObj);
     const helmetSize = box.getSize(new THREE.Vector3());
 
     const helmetRadius = Math.max(helmetSize.x, helmetSize.y, helmetSize.z) / 2;
-    const scale = (headRadius * 1.2) / helmetRadius;
+    const scale = (headRadius * CONFIG.HELMET.SCALE_FACTOR) / helmetRadius;
 
     helmetObj.scale.setScalar(scale);
 
@@ -302,12 +339,18 @@ export class FaceMeshBuilder {
     // Center on head. Recompute bbox after rotation for correct placement.
     const boxAfterRot = new THREE.Box3().setFromObject(helmetObj);
     const centerAfterRot = boxAfterRot.getCenter(new THREE.Vector3());
-    helmetObj.position.set(cx - centerAfterRot.x, cy - centerAfterRot.y, cz - centerAfterRot.z);
+    const offsetUp = headRadius * CONFIG.HELMET.OFFSET_UP;
+    const offsetBack = headRadius * CONFIG.HELMET.OFFSET_BACK;
+    helmetObj.position.set(
+      cx - centerAfterRot.x,
+      cy - centerAfterRot.y + offsetUp,
+      cz - centerAfterRot.z - offsetBack,
+    );
 
     const helmetMat = new THREE.MeshStandardMaterial({
-      color:     0xc0c0c0,
-      roughness: 0.08,
-      metalness: 0.95,
+      color:     CONFIG.HELMET.MATERIAL.COLOR,
+      roughness: CONFIG.HELMET.MATERIAL.ROUGHNESS,
+      metalness: CONFIG.HELMET.MATERIAL.METALNESS,
       side:      THREE.FrontSide,
     });
 
@@ -330,7 +373,8 @@ export class FaceMeshBuilder {
     landmarks: Landmark3D[],
     skinColor: THREE.Color,
   ): THREE.MeshStandardMaterial {
-    const w = 512, h = 512;
+    const w = CONFIG.HEAD.TEXTURE.WIDTH;
+    const h = CONFIG.HEAD.TEXTURE.HEIGHT;
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
@@ -341,7 +385,7 @@ export class FaceMeshBuilder {
     ctx.fillRect(0, 0, w, h);
 
     // Clip to face oval (slightly inset to avoid hair/black at perimeter).
-    const inset = 0.02;
+    const inset = CONFIG.HEAD.MATERIAL.FACE_OVAL_INSET;
     const uvPath = FACE_OVAL.map(i => {
       const lm = landmarks[i];
       const u = -lm.x + 0.5;
@@ -362,10 +406,11 @@ export class FaceMeshBuilder {
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     return new THREE.MeshStandardMaterial({
-      map:       texture,
-      roughness: 0.75,
-      metalness: 0.0,
-      side:      THREE.FrontSide,
+      map:             texture,
+      roughness:       CONFIG.HEAD.MATERIAL.FACE_ROUGHNESS,
+      metalness:       CONFIG.HEAD.MATERIAL.FACE_METALNESS,
+      side:             THREE.FrontSide,
+      envMapIntensity: 0,  // scene.environment is for helmet; face uses only scene lights
     });
   }
 
@@ -401,7 +446,7 @@ export class FaceMeshBuilder {
       return new THREE.Color(r / n, g / n, b / n);
     }
 
-    return new THREE.Color(0xd4956a);
+    return new THREE.Color(CONFIG.HEAD.MATERIAL.SKIN_FALLBACK);
   }
 
   /** Sample average color from a patch centered on the given landmark. */
@@ -409,7 +454,7 @@ export class FaceMeshBuilder {
     sourceImage: HTMLImageElement,
     landmarks: Landmark3D[],
     landmarkIndex: number,
-    patchSize = 24,
+    patchSize = CONFIG.HEAD.SKIN_SAMPLE_PATCH_SIZE,
   ): THREE.Color | null {
     try {
       if (!sourceImage.naturalWidth || !sourceImage.naturalHeight) return null;
@@ -454,7 +499,7 @@ export class FaceMeshBuilder {
     const idx = geometry.index;
     let textureDataUrl = '';
     if (material.map instanceof THREE.CanvasTexture) {
-      textureDataUrl = (material.map.image as HTMLCanvasElement).toDataURL('image/jpeg', 0.85);
+      textureDataUrl = (material.map.image as HTMLCanvasElement).toDataURL('image/jpeg', CONFIG.HEAD.TEXTURE.JPEG_QUALITY);
     }
     return {
       vertices:       toBase64((pos.array as Float32Array).buffer),

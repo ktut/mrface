@@ -30,6 +30,7 @@
 // We must load it via a <script> tag so the IIFE runs, then read window.FaceMesh.
 // Types are imported separately so TypeScript is happy.
 import type { FaceMesh as FaceMeshType, Results } from '@mediapipe/face_mesh';
+import { CONFIG } from '../../config';
 
 /** A single landmark already converted to Three.js coordinate space. */
 export interface Landmark3D {
@@ -79,9 +80,9 @@ export class FaceCapture {
 
     this.faceMesh.setOptions({
       maxNumFaces:           1,
-      refineLandmarks:       true,  // adds iris landmarks for better eye detail
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence:  0.5,
+      refineLandmarks:       true,
+      minDetectionConfidence: CONFIG.FACE_CAPTURE.MIN_DETECTION_CONFIDENCE,
+      minTrackingConfidence:  CONFIG.FACE_CAPTURE.MIN_TRACKING_CONFIDENCE,
     });
 
     this.faceMesh.onResults((results: Results) => {
@@ -94,7 +95,7 @@ export class FaceCapture {
       const converted: Landmark3D[] = raw.map((lm) => ({
         x: -(lm.x - 0.5),
         y: -(lm.y - 0.5),
-        z: -lm.z * 0.5,
+        z: -lm.z * CONFIG.FACE_CAPTURE.Z_SCALE,
       }));
 
       this.resolveDetection?.(converted);

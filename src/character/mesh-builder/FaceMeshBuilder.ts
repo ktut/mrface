@@ -335,16 +335,19 @@ export class FaceMeshBuilder {
     const rootRad = headRadius * CONFIG.HAIR.STRAND_RADIUS * scaleFactor;
 
     // Single strand: curved tube (wavy) along Y, root at origin; curve bends so it’s not straight
+    // Gentle, soft curve so strands look like hair, not stiff spaghetti
     const curve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.14, 0.17, 0.1),
-      new THREE.Vector3(-0.12, 0.35, 0.18),
-      new THREE.Vector3(0.18, 0.52, -0.08),
-      new THREE.Vector3(-0.1, 0.68, 0.14),
-      new THREE.Vector3(0.12, 0.85, -0.06),
+      new THREE.Vector3(0.06, 0.2, 0.04),
+      new THREE.Vector3(-0.05, 0.4, 0.08),
+      new THREE.Vector3(0.07, 0.6, -0.03),
+      new THREE.Vector3(-0.04, 0.78, 0.05),
+      new THREE.Vector3(0.05, 0.92, -0.02),
       new THREE.Vector3(0, 1, 0),
     ], false);
-    const strandGeo = new THREE.TubeGeometry(curve, 20, rootRad, 4, false);
+    const tubularSegments = CONFIG.HAIR.TUBULAR_SEGMENTS ?? 28;
+    const radialSegments = CONFIG.HAIR.RADIAL_SEGMENTS ?? 6;
+    const strandGeo = new THREE.TubeGeometry(curve, tubularSegments, rootRad, radialSegments, false);
     strandGeo.scale(strandLen, strandLen, strandLen);
 
     // Vertex colors: brown at root → blonde at tip (derive t from position along curve)
@@ -352,7 +355,7 @@ export class FaceMeshBuilder {
     const numVerts = posAttr.count;
     const rootColor = new THREE.Color(CONFIG.HAIR.ROOT_COLOR);
     const tipColor = new THREE.Color(CONFIG.HAIR.TIP_COLOR);
-    const blendPower = CONFIG.HAIR.TIP_BLEND_POWER ?? 1;
+    const blendPower: number = CONFIG.HAIR.TIP_BLEND_POWER ?? 1;
     const colorArray = new Float32Array(numVerts * 3);
     let yMin = Infinity, yMax = -Infinity;
     for (let i = 0; i < numVerts; i++) {
@@ -409,9 +412,9 @@ export class FaceMeshBuilder {
       );
       const dir = pos.clone().sub(headCenter).normalize();
       quat.setFromUnitVectors(up, dir);
-      const twist = (Math.random() - 0.5) * 1.2;
-      const tilt = (Math.random() - 0.5) * 1.2;
-      const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, twist, (Math.random() - 0.5) * 0.6));
+      const twist = (Math.random() - 0.5) * 0.7;
+      const tilt = (Math.random() - 0.5) * 0.7;
+      const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, twist, (Math.random() - 0.5) * 0.35));
       quat.premultiply(q2);
       const lenScale = 0.7 + 0.6 * Math.random();
       scale.set(1, lenScale, 1);

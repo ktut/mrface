@@ -37,7 +37,9 @@ body {
   border: 1px solid v.$color-border;
   z-index: v.$z-overlay;
 
-  button {
+  > button:first-of-type,
+  > button:last-of-type {
+    flex-shrink: 0;
     width: v.$space-xl;
     height: v.$space-xl;
     padding: 0;
@@ -57,11 +59,91 @@ body {
   }
 }
 
-.topper-label {
-  min-width: 10rem;
-  text-align: center;
-  font-size: v.$font-size-sm;
+.head-topper-strip {
+  display: flex;
+  align-items: stretch;
+  gap: v.$space-sm;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  max-width: min(80vw, 28rem);
+  padding: v.$space-xxs 0;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.topper-option {
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: v.$space-xxs;
+  padding: v.$space-xs v.$space-sm;
+  min-width: 5.5rem;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: v.$space-sm;
   color: v.$color-text-secondary;
+  font-family: inherit;
+  font-size: v.$font-size-xs;
+  cursor: pointer;
+  transition: border-color v.$transition-base, background v.$transition-base, color v.$transition-base;
+
+  &:hover {
+    color: v.$color-text;
+    background: v.$color-border;
+  }
+
+  &.topper-option--selected {
+    border-color: v.$color-primary;
+    color: v.$color-text;
+    background: rgba(v.$color-primary, 0.12);
+  }
+}
+
+.topper-option-image-wrap {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: v.$space-xs;
+  overflow: hidden;
+  background: v.$color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topper-option-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.topper-option-fallback {
+  display: none;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: v.$font-weight-semibold;
+  color: v.$color-text-muted;
+  text-transform: uppercase;
+}
+
+.topper-option-label {
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ui-overlay {

@@ -4,7 +4,10 @@ import { SceneManager } from './rendering/SceneManager';
 import { FaceCapture } from './character/face-capture/FaceCapture';
 import { FaceMeshBuilder } from './character/mesh-builder/FaceMeshBuilder';
 
-const HEAD_TOPPER_LABELS = ['blonde frizzy hair', 'helmet'] as const;
+const HEAD_TOPPER_OPTIONS = [
+  { id: 0, label: 'blonde frizzy hair', image: '/thumbnails/hair.png' },
+  { id: 1, label: 'helmet', image: '/thumbnails/helmet.png' },
+] as const;
 const SWIPE_THRESHOLD_PX = 50;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -23,13 +26,15 @@ export function App() {
   const faceCaptureRef = useRef<FaceCapture | null>(null);
   const faceMeshBuilderRef = useRef<FaceMeshBuilder | null>(null);
   const touchStartXRef = useRef(0);
+  const topperStripRef = useRef<HTMLDivElement | null>(null);
 
   const [status, setStatus] = useState('Loading MediaPipe…');
   const [uploadDisabled, setUploadDisabled] = useState(true);
   const [headTopperIndex, setHeadTopperIndexState] = useState(0);
 
   const setHeadTopperIndex = useCallback((index: number) => {
-    const i = ((index % 2) + 2) % 2;
+    const n = HEAD_TOPPER_OPTIONS.length;
+    const i = ((index % n) + n) % n;
     setHeadTopperIndexState(i);
     const head = sceneManagerRef.current?.getCharacterHead();
     if (head) {
@@ -39,6 +44,7 @@ export function App() {
         const helmet = headwear.getObjectByName('helmet');
         if (hair) hair.visible = i === 0;
         if (helmet) helmet.visible = i === 1;
+        // Add more named visibility toggles here when new toppers are added
       }
     }
     return i;
@@ -142,21 +148,63 @@ export function App() {
     [headTopperIndex, setHeadTopperIndex],
   );
 
+  // Scroll strip so the selected option is in view when changing via arrows
+  useEffect(() => {
+    const strip = topperStripRef.current;
+    if (!strip) return;
+    const option = strip.querySelector(`.topper-option:nth-child(${headTopperIndex + 1})`) as HTMLElement | null;
+    if (option) option.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [headTopperIndex]);
+
   return (
     <>
       <div ref={containerRef} className="canvas-container" />
 
       <div
         className="head-topper-control"
-        onTouchStart={onTopperTouchStart}
-        onTouchEnd={onTopperTouchEnd}
         role="group"
         aria-label="Head topper"
       >
         <button type="button" onClick={topperPrev} aria-label="Previous head topper">
           ‹
         </button>
-        <span className="topper-label">{HEAD_TOPPER_LABELS[headTopperIndex]}</span>
+        <div
+          ref={topperStripRef}
+          className="head-topper-strip"
+          onTouchStart={onTopperTouchStart}
+          onTouchEnd={onTopperTouchEnd}
+          role="list"
+        >
+          {HEAD_TOPPER_OPTIONS.map((opt, index) => (
+            <button
+              key={opt.id}
+              type="button"
+              className={`topper-option ${index === headTopperIndex ? 'topper-option--selected' : ''}`}
+              onClick={() => setHeadTopperIndex(index)}
+              role="listitem"
+              aria-pressed={index === headTopperIndex}
+              aria-label={opt.label}
+            >
+              <span className="topper-option-image-wrap">
+                <img
+                  src={opt.image}
+                  alt=""
+                  className="topper-option-img"
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    el.style.display = 'none';
+                    const fallback = el.nextElementSibling;
+                    if (fallback) (fallback as HTMLElement).style.display = 'block';
+                  }}
+                />
+                <span className="topper-option-fallback" aria-hidden>
+                  {opt.label.charAt(0)}
+                </span>
+              </span>
+              <span className="topper-option-label">{opt.label}</span>
+            </button>
+          ))}
+        </div>
         <button type="button" onClick={topperNext} aria-label="Next head topper">
           ›
         </button>

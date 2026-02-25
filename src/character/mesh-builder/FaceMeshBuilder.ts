@@ -37,9 +37,12 @@
  */
 
 import * as THREE from 'three';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Landmark3D } from '../face-capture/FaceCapture';
 import { TRIANGULATION } from './triangulation';
+
+const HELMET_OBJ_URL = '/models/Helmet__Sfera_v1_L1.123c237682f7-5c65-4abc-81fb-c187b7186453/18893_Helmet-Sfera_v1.obj';
 
 /**
  * Ordered ring of MediaPipe landmark indices that trace the face oval boundary.
@@ -80,11 +83,21 @@ export class FaceMeshBuilder {
       side:      THREE.DoubleSide,  // back cap + side wall visible from all angles
     });
 
-    const mesh = new THREE.Mesh(merged, [faceMat, backMat]);
-    mesh.name        = 'characterHead';
-    mesh.castShadow    = true;
-    mesh.receiveShadow = true;
-    group.add(mesh);
+    const headMesh = new THREE.Mesh(merged, [faceMat, backMat]);
+    headMesh.name = 'head';
+    headMesh.castShadow = true;
+    headMesh.receiveShadow = true;
+
+    const headGroup = new THREE.Group();
+    headGroup.name = 'head';
+    headGroup.add(headMesh);
+    group.add(headGroup);
+
+    // Headwear (helmet, hair, etc.) — separate, swappable element.
+    const headwearGroup = new THREE.Group();
+    headwearGroup.name = 'headwear';
+    headwearGroup.add(await this.buildHelmet(bbox));
+    group.add(headwearGroup);
 
     // Shift so the face centre is at the scene origin.
     group.position.set(-bbox.cx, -bbox.cy, -bbox.cz);
@@ -254,6 +267,60 @@ export class FaceMeshBuilder {
     shellGeo.setIndex(shellIdx);
 
     return { sideGeo: shellGeo };
+  }
+
+  // ── Helmet (loaded from OBJ model) ────────────────────────────────────────────
+
+  /**
+   * Load the Sfera helmet OBJ model, scale and position it to fit the head.
+   * Model from 3ds Max: Y-up OBJ, opening may face +Z or -Z. Try rotations to align.
+   */
+  private async buildHelmet(
+    bbox: ReturnType<FaceMeshBuilder['computeBbox']>,
+  ): Promise<THREE.Group> {
+    const { cx, cy, cz } = bbox;
+    const width = bbox.width;
+    const depth = width * 0.5;
+    const headRadius = Math.sqrt(width * width + bbox.height * bbox.height + depth * depth) / 2;
+
+    const loader = new OBJLoader();
+    const helmetObj = await loader.loadAsync(HELMET_OBJ_URL);
+
+    const box = new THREE.Box3().setFromObject(helmetObj);
+    const helmetSize = box.getSize(new THREE.Vector3());
+
+    const helmetRadius = Math.max(helmetSize.x, helmetSize.y, helmetSize.z) / 2;
+    const scale = (headRadius * 1.2) / helmetRadius;
+
+    helmetObj.scale.setScalar(scale);
+
+    // Orient: rotate 90° around X and Z, 180° around Y. Add 180° around Z so front faces the face mesh.
+    helmetObj.rotation.x = Math.PI / 2;
+    helmetObj.rotation.y = Math.PI;
+    helmetObj.rotation.z = Math.PI / 2 + Math.PI;
+
+    // Center on head. Recompute bbox after rotation for correct placement.
+    const boxAfterRot = new THREE.Box3().setFromObject(helmetObj);
+    const centerAfterRot = boxAfterRot.getCenter(new THREE.Vector3());
+    helmetObj.position.set(cx - centerAfterRot.x, cy - centerAfterRot.y, cz - centerAfterRot.z);
+
+    const helmetMat = new THREE.MeshStandardMaterial({
+      color:     0xc0c0c0,
+      roughness: 0.08,
+      metalness: 0.95,
+      side:      THREE.FrontSide,
+    });
+
+    helmetObj.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.material = helmetMat;
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    helmetObj.name = 'helmet';
+    return helmetObj;
   }
 
   // ── Face material (group 0) ───────────────────────────────────────────────────

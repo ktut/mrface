@@ -144,6 +144,11 @@ await fetch('/api/characters', {
 - **Rapier** (`@dimforge/rapier3d-compat`) is the chosen physics engine.
 - Do **not** use Cannon.js — it is deprecated for this project.
 
+### Character Build Pipeline
+- **Face mask**: Always from a photo facing up, correct direction. No face rotation.
+- **Headwear**: Helmet, hair, etc. wrap around the face. Swappable via the `headwear` group.
+- **Persistence**: Final character saved to local storage for use in kart, racing, etc.
+
 ### Back of Head
 - MediaPipe only covers the front face. The back/sides of the head will need a
   generic base head mesh blended in during a future task (Phase 2 or 3).

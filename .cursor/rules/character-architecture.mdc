@@ -1,0 +1,40 @@
+---
+description: Character build pipeline — face mask, headwear, persistence
+globs: src/character/**/*.ts, src/main.ts
+alwaysApply: false
+---
+
+# Character Architecture
+
+## Face Mask (Source of Truth)
+
+- Built from a face photo that is **always facing up and the correct direction**
+- No rotation or orientation correction needed for the face
+- MediaPipe landmarks → face mesh + back shell → centered at origin
+
+## Headwear (Swappable)
+
+- Helmet, hair, etc. wrap around the face mask
+- Lives in the `headwear` group — swap by clearing and adding a new mesh
+- Each headwear type (helmet, hair) must be oriented to align with the face
+
+```ts
+const headwear = characterHead.getObjectByName('headwear');
+headwear.clear();
+headwear.add(newHairMesh);
+```
+
+## Persistence & Flow
+
+1. User uploads face photo → face mask built
+2. User selects headwear (helmet, hair, etc.)
+3. Final character saved to **local storage**
+4. Character used in additional steps (kart, racing, etc.)
+
+## Scene Hierarchy
+
+```
+characterHead (group)
+├── head (group)        — face mesh + back shell
+└── headwear (group)    — helmet | hair | etc. (swappable)
+```

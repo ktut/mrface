@@ -8,7 +8,7 @@ export const CONFIG = {
     OBJ_URL: '/models/Helmet__Sfera_v1_L1.123c237682f7-5c65-4abc-81fb-c187b7186453/18893_Helmet-Sfera_v1.obj',
     SCALE_FACTOR: 1.0,       // Size relative to head (1.0 = head size, >1 = larger)
     OFFSET_UP: 0.47,         // Up/down: fraction of head radius (+ = up)
-    OFFSET_BACK: 0.72,       // Forward/back: fraction of head radius (+ = back)
+    OFFSET_BACK: 0.52,       // Forward/back: fraction of head radius (+ = back)
     MATERIAL: {
       COLOR: 0xc0c0c8,
       ROUGHNESS: 0.08,

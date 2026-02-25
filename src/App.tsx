@@ -91,6 +91,9 @@ export function App() {
       setUploadDisabled(true);
       try {
         setProgress(5);
+        // Run detection twice: MediaPipe often returns the previous image's landmarks
+        // on the first send when switching images. The second result matches the image.
+        await faceCapture.detectFromImage(img);
         const landmarks = await faceCapture.detectFromImage(img);
         if (!landmarks) {
           setProgress(0);

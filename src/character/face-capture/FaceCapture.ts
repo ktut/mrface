@@ -104,6 +104,21 @@ export class FaceCapture {
     });
 
     await this.faceMesh.initialize();
+
+    // Warmup: the first send() after init often returns stale/wrong landmarks.
+    // Run one detection and discard the result so the first real run is correct.
+    const warmupImg = await this.createWarmupImage();
+    await this.detectFromImage(warmupImg);
+  }
+
+  /** Minimal image for pipeline warmup (1×1 pixel). */
+  private createWarmupImage(): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Warmup image failed'));
+      img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    });
   }
 
   /**

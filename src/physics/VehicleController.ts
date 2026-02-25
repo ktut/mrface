@@ -87,7 +87,8 @@ export class VehicleController {
   applyInput(throttle: number, brake: number, steer: number) {
     // Negate so positive throttle drives away from camera (+Z); Rapier's forward is -Z with identity chassis.
     const engine = -(throttle * MAX_ENGINE_FORCE - brake * MAX_BRAKE);
-    const steerAngle = steer * MAX_STEER_RAD;
+    // Negate steer so left/right match the rotated visual (kart faces +Z with -90° Y offset).
+    const steerAngle = -steer * MAX_STEER_RAD;
     // Rear-wheel drive (wheels 2, 3); front wheels (0, 1) steer.
     this.vehicle.setWheelEngineForce(0, 0);
     this.vehicle.setWheelEngineForce(1, 0);

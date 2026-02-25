@@ -12,17 +12,17 @@ export const CONFIG = {
     ROUGHNESS: 0.95,
     METALNESS: 0.0,
     STRAND_COUNT: 2600,        // Instanced strands; one draw call
-    SCALE_FACTOR: 1.55,        // Overall hair scale (length + thickness); 1 = base size
+    SCALE_FACTOR: 1.95,        // Overall hair scale (length + thickness); 1 = base size
     STRAND_LENGTH: 0.22,       // Fraction of head radius (before SCALE_FACTOR)
     STRAND_RADIUS: 0.024,      // Thinner = softer, less spaghetti-like (was 0.038)
     TUBULAR_SEGMENTS: 28,      // More segments = smoother curve along strand
     RADIAL_SEGMENTS: 6,        // Softer cross-section (was 4)
     STRAND_TAPER: 0.35,       // Tip radius = root * this (unused for tube)
     // Positioning on head (all in “head radius” units unless noted):
-    OFFSET_UP: 0.2,           // Move whole hair up (+) or down (-) from crown
-    OFFSET_BACK: -1.0,         // Move whole hair back (+) or forward (-)
-    OFFSET_SIDE: 0.0,         // Move whole hair left (-) or right (+) in X
-    ROOT_RADIUS_MIN: 0.35,    // Min fraction of head radius for root dome (crown = 0)
+    OFFSET_UP: 0.4,           // Move whole hair up (+) or down (-) from crown
+    OFFSET_BACK: -1.1,         // Move whole hair back (+) or forward (-)
+    OFFSET_SIDE: -0.05,         // Move whole hair left (-) or right (+) in X
+    ROOT_RADIUS_MIN: 0.5,    // Min fraction of head radius for root dome (crown = 0)
     ROOT_RADIUS_MAX: 0.9,     // Max fraction — how far down the sides roots go (1 = full dome)
     ROTATION_BACK_DEGREES: -50, // Tilt hair backward (positive = toward back of head)
   },

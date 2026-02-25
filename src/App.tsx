@@ -5,9 +5,31 @@ import { FaceCapture } from './character/face-capture/FaceCapture';
 import { FaceMeshBuilder } from './character/mesh-builder/FaceMeshBuilder';
 
 const HEAD_TOPPER_OPTIONS = [
-  { id: 0, label: 'blonde frizzy hair', image: '/thumbnails/hair.png' },
-  { id: 1, label: 'helmet', image: '/thumbnails/helmet.png' },
+  { id: 0, label: 'frizzy hair', icon: 'hair', color: '#c9a87a' },
+  { id: 1, label: 'helmet', icon: 'helmet', color: '#c0c0c8' },
 ] as const;
+
+function TopperIcon({ type, color }: { type: 'hair' | 'helmet'; color: string }) {
+  if (type === 'hair') {
+    // Frizzy hair: face oval with curly strokes above
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+        <ellipse cx="12" cy="14" rx="5" ry="6" />
+        <path d="M7 9 Q7 3 12 2 Q17 3 17 9" />
+        <path d="M8 7 Q10 4 12 5 Q14 4 16 7" />
+        <path d="M9 5 Q11 2 12 3 Q13 2 15 5" />
+        <path d="M10 8 Q12 6 14 8" />
+      </svg>
+    );
+  }
+  // Helmet: dome with visor line
+  return (
+    <svg viewBox="0 0 24 24" fill={color} aria-hidden>
+      <path d="M4 13c0-4.4 3.6-8 8-8s8 3.6 8 8v7H4v-7z" />
+      <path d="M6 13c0-3.3 2.7-6 6-6s6 2.7 6 6" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="0.8" />
+    </svg>
+  );
+}
 const SWIPE_THRESHOLD_PX = 50;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -185,21 +207,8 @@ export function App() {
               aria-pressed={index === headTopperIndex}
               aria-label={opt.label}
             >
-              <span className="topper-option-image-wrap">
-                <img
-                  src={opt.image}
-                  alt=""
-                  className="topper-option-img"
-                  onError={(e) => {
-                    const el = e.currentTarget;
-                    el.style.display = 'none';
-                    const fallback = el.nextElementSibling;
-                    if (fallback) (fallback as HTMLElement).style.display = 'block';
-                  }}
-                />
-                <span className="topper-option-fallback" aria-hidden>
-                  {opt.label.charAt(0)}
-                </span>
+              <span className="topper-option-icon-wrap">
+                <TopperIcon type={opt.icon} color={opt.color} />
               </span>
               <span className="topper-option-label">{opt.label}</span>
             </button>

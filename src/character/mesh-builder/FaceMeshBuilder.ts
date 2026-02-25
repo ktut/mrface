@@ -395,7 +395,7 @@ export class FaceMeshBuilder {
     const scale = new THREE.Vector3(1, 1, 1);
     const matrix = new THREE.Matrix4();
 
-    // Crown at origin (top of head); head center one radius below — roots on UPPER hemisphere only
+    // Roots on upper hemisphere; strand direction = flow (down + back), not radial — avoids "electrocuted" look
     const headCenterY = -headRadius;
     const headCenter = new THREE.Vector3(0, headCenterY, 0);
 
@@ -410,8 +410,13 @@ export class FaceMeshBuilder {
         headCenterY + r * Math.cos(phi),
         r * Math.sin(phi) * Math.sin(theta),
       );
-      const dir = pos.clone().sub(headCenter).normalize();
-      quat.setFromUnitVectors(up, dir);
+      // Flow downward and slightly back (like gravity), with per-strand variation — not radial outward
+      const flow = new THREE.Vector3(
+        (Math.random() - 0.2) * 0.8,
+        -0.28 - Math.random() * 0.12,
+        -0.25 - Math.random() * 0.5,
+      ).normalize();
+      quat.setFromUnitVectors(up, flow);
       const twist = (Math.random() - 0.5) * 0.7;
       const tilt = (Math.random() - 0.5) * 0.7;
       const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, twist, (Math.random() - 0.5) * 0.35));

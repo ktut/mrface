@@ -6,6 +6,12 @@ import { VehicleController } from '../physics/VehicleController';
 import { InputManager } from '../engine/InputManager';
 import { buildKartCharacter } from '../character/KartCharacter';
 
+/** Offset so kart visual (nose along +X in chassis space) faces +Z (away from camera). Applied after chassis sync. */
+const KART_FORWARD_OFFSET_QUAT = new THREE.Quaternion().setFromAxisAngle(
+  new THREE.Vector3(0, 1, 0),
+  -Math.PI / 2,
+);
+
 /** Creates a subtle repeating grid texture for the kart ground (green base + darker grid lines). */
 function createGroundGridTexture(): THREE.CanvasTexture {
   const size = 256;
@@ -188,6 +194,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
       g.vehicle.update(dt);
       g.vehicle.getWorld().step();
       g.vehicle.syncToObject3D(g.kartGroup);
+      g.kartGroup.quaternion.multiply(KART_FORWARD_OFFSET_QUAT);
 
       const chassis = g.vehicle.getChassisBody();
       const t = chassis.translation();

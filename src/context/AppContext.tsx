@@ -12,6 +12,29 @@ import { IS_DEV } from '../config';
 
 const STORAGE_KEY = 'mrface-app';
 
+/** Separate key for debug mode preference; only used in dev, not tied to app state. */
+const DEBUG_MODE_STORAGE_KEY = 'mrface-debug-mode';
+
+function loadDebugMode(): boolean {
+  if (!IS_DEV) return false;
+  try {
+    const raw = localStorage.getItem(DEBUG_MODE_STORAGE_KEY);
+    if (raw === null) return true; // default on in dev
+    return raw === 'true';
+  } catch {
+    return true;
+  }
+}
+
+function saveDebugMode(value: boolean) {
+  if (!IS_DEV) return;
+  try {
+    localStorage.setItem(DEBUG_MODE_STORAGE_KEY, String(value));
+  } catch {
+    // ignore
+  }
+}
+
 export interface CharacterEntry {
   id: string;
   name: string;
@@ -91,7 +114,7 @@ export function AppProvider({
   const [selectedCharacterIndex, setSelectedCharacterIndexState] = useState(initialSelectedIndex);
   const [helmetHue, setHelmetHueState] = useState(initialHelmetHue);
   const [selectedGameId, setSelectedGameIdState] = useState<string | null>(null);
-  const [debugMode, setDebugModeState] = useState(IS_DEV);
+  const [debugMode, setDebugModeState] = useState(loadDebugMode);
 
   const setCharacters = useCallback((action: React.SetStateAction<CharacterEntry[]>) => {
     setCharactersState(action);
@@ -178,6 +201,7 @@ export function AppProvider({
 
   const setDebugMode = useCallback((value: boolean) => {
     setDebugModeState(value);
+    saveDebugMode(value);
   }, []);
 
   const value = useMemo<AppContextValue>(

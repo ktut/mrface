@@ -43,14 +43,79 @@ export async function buildKartCharacter(headGroup: THREE.Group): Promise<THREE.
 
   const driverBody = new THREE.Group();
   driverBody.name = 'driverBody';
-  const body = CONFIG.KART.DRIVER.BODY;
-  const bodyGeo = new THREE.BoxGeometry(body.WIDTH, body.HEIGHT, body.DEPTH);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: body.COLOR });
+  const bodyCfg = CONFIG.KART.DRIVER.BODY;
+  const bodyGeo = new THREE.BoxGeometry(bodyCfg.WIDTH, bodyCfg.HEIGHT, bodyCfg.DEPTH);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: bodyCfg.COLOR });
   const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+  bodyMesh.name = 'driverTorso';
   bodyMesh.castShadow = true;
   bodyMesh.receiveShadow = true;
-  bodyMesh.position.y = body.OFFSET_Y;
+  bodyMesh.position.set(
+    bodyCfg.POSITION[0],
+    bodyCfg.OFFSET_Y + bodyCfg.POSITION[1],
+    bodyCfg.POSITION[2],
+  );
   driverBody.add(bodyMesh);
+
+  const armsCfg = CONFIG.KART.DRIVER.ARMS;
+  const armGeo = new THREE.CylinderGeometry(armsCfg.RADIUS, armsCfg.RADIUS, armsCfg.LENGTH, 8);
+  const armMat = new THREE.MeshStandardMaterial({ color: armsCfg.COLOR });
+  const leftArm = new THREE.Mesh(armGeo.clone(), armMat.clone());
+  leftArm.name = 'driverLeftArm';
+  leftArm.castShadow = true;
+  leftArm.receiveShadow = true;
+  leftArm.position.set(...armsCfg.LEFT.POSITION);
+  leftArm.rotation.set(
+    Math.PI / 2 + armsCfg.LEFT.ROTATION[0],
+    armsCfg.LEFT.ROTATION[1],
+    armsCfg.LEFT.ROTATION[2],
+  );
+  driverBody.add(leftArm);
+  const rightArm = new THREE.Mesh(armGeo.clone(), armMat.clone());
+  rightArm.name = 'driverRightArm';
+  rightArm.castShadow = true;
+  rightArm.receiveShadow = true;
+  rightArm.position.set(...armsCfg.RIGHT.POSITION);
+  rightArm.rotation.set(
+    Math.PI / 2 + armsCfg.RIGHT.ROTATION[0],
+    armsCfg.RIGHT.ROTATION[1],
+    armsCfg.RIGHT.ROTATION[2],
+  );
+  driverBody.add(rightArm);
+
+  const legsCfg = CONFIG.KART.DRIVER.LEGS;
+  const legGeo = new THREE.CylinderGeometry(legsCfg.RADIUS, legsCfg.RADIUS, legsCfg.LENGTH, 8);
+  const legMat = new THREE.MeshStandardMaterial({ color: legsCfg.COLOR });
+  const leftLeg = new THREE.Mesh(legGeo.clone(), legMat.clone());
+  leftLeg.name = 'driverLeftLeg';
+  leftLeg.castShadow = true;
+  leftLeg.receiveShadow = true;
+  leftLeg.position.set(...legsCfg.LEFT.POSITION);
+  leftLeg.rotation.set(...legsCfg.LEFT.ROTATION);
+  driverBody.add(leftLeg);
+  const rightLeg = new THREE.Mesh(legGeo.clone(), legMat.clone());
+  rightLeg.name = 'driverRightLeg';
+  rightLeg.castShadow = true;
+  rightLeg.receiveShadow = true;
+  rightLeg.position.set(...legsCfg.RIGHT.POSITION);
+  rightLeg.rotation.set(...legsCfg.RIGHT.ROTATION);
+  driverBody.add(rightLeg);
+
+  const feetCfg = CONFIG.KART.DRIVER.FEET;
+  const footGeo = new THREE.BoxGeometry(...feetCfg.SIZE);
+  const footMat = new THREE.MeshStandardMaterial({ color: feetCfg.COLOR });
+  const leftFoot = new THREE.Mesh(footGeo.clone(), footMat.clone());
+  leftFoot.name = 'driverLeftFoot';
+  leftFoot.castShadow = true;
+  leftFoot.receiveShadow = true;
+  leftFoot.position.set(...feetCfg.LEFT.POSITION);
+  driverBody.add(leftFoot);
+  const rightFoot = new THREE.Mesh(footGeo.clone(), footMat.clone());
+  rightFoot.name = 'driverRightFoot';
+  rightFoot.castShadow = true;
+  rightFoot.receiveShadow = true;
+  rightFoot.position.set(...feetCfg.RIGHT.POSITION);
+  driverBody.add(rightFoot);
 
   const headClone = headGroup.clone(true);
   headClone.name = 'driverHead';

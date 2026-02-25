@@ -1,16 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useApp } from '../context/AppContext';
 import { buildKartCharacter } from '../character/KartCharacter';
 import { CONFIG } from '../config';
 
+type Vec3 = [number, number, number];
+
 const [dpx, dpy, dpz] = CONFIG.KART.DRIVER.POSITION;
 const [drx, dry, drz] = CONFIG.KART.DRIVER.ROTATION;
 const [hpx, hpy, hpz] = CONFIG.KART.DRIVER.HEAD.POSITION;
 const [hrx, hry, hrz] = CONFIG.KART.DRIVER.HEAD.ROTATION;
-
-type Vec3 = [number, number, number];
+const bodyPos0: Vec3 = [...CONFIG.KART.DRIVER.BODY.POSITION];
+const leftArmPos0: Vec3 = [...CONFIG.KART.DRIVER.ARMS.LEFT.POSITION];
+const rightArmPos0: Vec3 = [...CONFIG.KART.DRIVER.ARMS.RIGHT.POSITION];
+const leftLegPos0: Vec3 = [...CONFIG.KART.DRIVER.LEGS.LEFT.POSITION];
+const rightLegPos0: Vec3 = [...CONFIG.KART.DRIVER.LEGS.RIGHT.POSITION];
+const leftLegRot0: Vec3 = [...CONFIG.KART.DRIVER.LEGS.LEFT.ROTATION];
+const rightLegRot0: Vec3 = [...CONFIG.KART.DRIVER.LEGS.RIGHT.ROTATION];
+const leftFootPos0: Vec3 = [...CONFIG.KART.DRIVER.FEET.LEFT.POSITION];
+const rightFootPos0: Vec3 = [...CONFIG.KART.DRIVER.FEET.RIGHT.POSITION];
 
 /**
  * Renders the same kart + character + body setup used in the actual game,
@@ -18,7 +27,7 @@ type Vec3 = [number, number, number];
  */
 export function GameSelectPreview() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const { selectedCharacter } = useApp();
+  const { selectedCharacter, debugMode } = useApp();
   const kartGroupRef = useRef<THREE.Group | null>(null);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
@@ -32,9 +41,58 @@ export function GameSelectPreview() {
   const [driverRot, setDriverRot] = useState<Vec3>([drx, dry, drz]);
   const [headPos, setHeadPos] = useState<Vec3>([hpx, hpy, hpz]);
   const [headRot, setHeadRot] = useState<Vec3>([hrx, hry, hrz]);
+  const [bodyPos, setBodyPos] = useState<Vec3>(bodyPos0);
+  const [leftArmPos, setLeftArmPos] = useState<Vec3>(leftArmPos0);
+  const [rightArmPos, setRightArmPos] = useState<Vec3>(rightArmPos0);
+  const [leftLegPos, setLeftLegPos] = useState<Vec3>(leftLegPos0);
+  const [rightLegPos, setRightLegPos] = useState<Vec3>(rightLegPos0);
+  const [leftLegRot, setLeftLegRot] = useState<Vec3>(leftLegRot0);
+  const [rightLegRot, setRightLegRot] = useState<Vec3>(rightLegRot0);
+  const [leftFootPos, setLeftFootPos] = useState<Vec3>(leftFootPos0);
+  const [rightFootPos, setRightFootPos] = useState<Vec3>(rightFootPos0);
+  const [sectionOpen, setSectionOpen] = useState<Record<string, boolean>>({
+    driver: false,
+    body: false,
+    arms: false,
+    legs: false,
+    feet: false,
+    head: false,
+    output: false,
+  });
 
-  const debugRef = useRef({ driverPos, driverRot, headPos, headRot });
-  debugRef.current = { driverPos, driverRot, headPos, headRot };
+  const debugRef = useRef({
+    driverPos,
+    driverRot,
+    headPos,
+    headRot,
+    bodyPos,
+    leftArmPos,
+    rightArmPos,
+    leftLegPos,
+    rightLegPos,
+    leftLegRot,
+    rightLegRot,
+    leftFootPos,
+    rightFootPos,
+  });
+  debugRef.current = {
+    driverPos,
+    driverRot,
+    headPos,
+    headRot,
+    bodyPos,
+    leftArmPos,
+    rightArmPos,
+    leftLegPos,
+    rightLegPos,
+    leftLegRot,
+    rightLegRot,
+    leftFootPos,
+    rightFootPos,
+  };
+
+  const toggleSection = (id: string) =>
+    setSectionOpen((prev) => ({ ...prev, [id]: !prev[id] }));
 
   useEffect(() => {
     const container = containerRef.current;
@@ -128,6 +186,13 @@ export function GameSelectPreview() {
         scene.add(kartGroup);
         const driverBody = kartGroup.getObjectByName('driverBody');
         const driverHead = kartGroup.getObjectByName('driverHead');
+        const torso = kartGroup.getObjectByName('driverTorso');
+        const leftArm = kartGroup.getObjectByName('driverLeftArm');
+        const rightArm = kartGroup.getObjectByName('driverRightArm');
+        const leftLeg = kartGroup.getObjectByName('driverLeftLeg');
+        const rightLeg = kartGroup.getObjectByName('driverRightLeg');
+        const leftFoot = kartGroup.getObjectByName('driverLeftFoot');
+        const rightFoot = kartGroup.getObjectByName('driverRightFoot');
         if (driverBody) {
           setDriverPos([driverBody.position.x, driverBody.position.y, driverBody.position.z]);
           setDriverRot([driverBody.rotation.x, driverBody.rotation.y, driverBody.rotation.z]);
@@ -136,6 +201,22 @@ export function GameSelectPreview() {
           setHeadPos([driverHead.position.x, driverHead.position.y, driverHead.position.z]);
           setHeadRot([driverHead.rotation.x, driverHead.rotation.y, driverHead.rotation.z]);
         }
+        const bodyOffY = CONFIG.KART.DRIVER.BODY.OFFSET_Y;
+        if (torso) {
+          setBodyPos([torso.position.x, torso.position.y - bodyOffY, torso.position.z]);
+        }
+        if (leftArm) setLeftArmPos([leftArm.position.x, leftArm.position.y, leftArm.position.z]);
+        if (rightArm) setRightArmPos([rightArm.position.x, rightArm.position.y, rightArm.position.z]);
+        if (leftLeg) {
+          setLeftLegPos([leftLeg.position.x, leftLeg.position.y, leftLeg.position.z]);
+          setLeftLegRot([leftLeg.rotation.x, leftLeg.rotation.y, leftLeg.rotation.z]);
+        }
+        if (rightLeg) {
+          setRightLegPos([rightLeg.position.x, rightLeg.position.y, rightLeg.position.z]);
+          setRightLegRot([rightLeg.rotation.x, rightLeg.rotation.y, rightLeg.rotation.z]);
+        }
+        if (leftFoot) setLeftFootPos([leftFoot.position.x, leftFoot.position.y, leftFoot.position.z]);
+        if (rightFoot) setRightFootPos([rightFoot.position.x, rightFoot.position.y, rightFoot.position.z]);
       })
       .catch((err) => {
         if (!cancelled) console.error('[GameSelectPreview] buildKartCharacter', err);
@@ -154,9 +235,17 @@ export function GameSelectPreview() {
       animationId = requestAnimationFrame(animate);
       const kg = kartGroupRef.current;
       const d = debugRef.current;
+      const bodyOffY = CONFIG.KART.DRIVER.BODY.OFFSET_Y;
       if (kg) {
         const driverBody = kg.getObjectByName('driverBody');
         const driverHead = kg.getObjectByName('driverHead');
+        const torso = kg.getObjectByName('driverTorso');
+        const leftArm = kg.getObjectByName('driverLeftArm');
+        const rightArm = kg.getObjectByName('driverRightArm');
+        const leftLeg = kg.getObjectByName('driverLeftLeg');
+        const rightLeg = kg.getObjectByName('driverRightLeg');
+        const leftFoot = kg.getObjectByName('driverLeftFoot');
+        const rightFoot = kg.getObjectByName('driverRightFoot');
         if (driverBody) {
           driverBody.position.set(d.driverPos[0], d.driverPos[1], d.driverPos[2]);
           driverBody.rotation.set(d.driverRot[0], d.driverRot[1], d.driverRot[2]);
@@ -165,6 +254,21 @@ export function GameSelectPreview() {
           driverHead.position.set(d.headPos[0], d.headPos[1], d.headPos[2]);
           driverHead.rotation.set(d.headRot[0], d.headRot[1], d.headRot[2]);
         }
+        if (torso) {
+          torso.position.set(d.bodyPos[0], bodyOffY + d.bodyPos[1], d.bodyPos[2]);
+        }
+        if (leftArm) leftArm.position.set(d.leftArmPos[0], d.leftArmPos[1], d.leftArmPos[2]);
+        if (rightArm) rightArm.position.set(d.rightArmPos[0], d.rightArmPos[1], d.rightArmPos[2]);
+        if (leftLeg) {
+          leftLeg.position.set(d.leftLegPos[0], d.leftLegPos[1], d.leftLegPos[2]);
+          leftLeg.rotation.set(d.leftLegRot[0], d.leftLegRot[1], d.leftLegRot[2]);
+        }
+        if (rightLeg) {
+          rightLeg.position.set(d.rightLegPos[0], d.rightLegPos[1], d.rightLegPos[2]);
+          rightLeg.rotation.set(d.rightLegRot[0], d.rightLegRot[1], d.rightLegRot[2]);
+        }
+        if (leftFoot) leftFoot.position.set(d.leftFootPos[0], d.leftFootPos[1], d.leftFootPos[2]);
+        if (rightFoot) rightFoot.position.set(d.rightFootPos[0], d.rightFootPos[1], d.rightFootPos[2]);
       }
       controls.update();
       renderer.render(scene, camera);
@@ -194,11 +298,40 @@ export function GameSelectPreview() {
     setHeadPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
   const updateHeadRot = (i: 0 | 1 | 2, v: number) =>
     setHeadRot((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateBodyPos = (i: 0 | 1 | 2, v: number) =>
+    setBodyPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateLeftArmPos = (i: 0 | 1 | 2, v: number) =>
+    setLeftArmPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateRightArmPos = (i: 0 | 1 | 2, v: number) =>
+    setRightArmPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateLeftLegPos = (i: 0 | 1 | 2, v: number) =>
+    setLeftLegPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateRightLegPos = (i: 0 | 1 | 2, v: number) =>
+    setRightLegPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateLeftLegRot = (i: 0 | 1 | 2, v: number) =>
+    setLeftLegRot((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateRightLegRot = (i: 0 | 1 | 2, v: number) =>
+    setRightLegRot((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateLeftFootPos = (i: 0 | 1 | 2, v: number) =>
+    setLeftFootPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
+  const updateRightFootPos = (i: 0 | 1 | 2, v: number) =>
+    setRightFootPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
 
-  const valueText = `DRIVER.POSITION: [${driverPos.map((n) => n.toFixed(3)).join(', ')}]
-DRIVER.ROTATION: [${driverRot.map((n) => n.toFixed(4)).join(', ')}]
-HEAD.POSITION: [${headPos.map((n) => n.toFixed(3)).join(', ')}]
-HEAD.ROTATION: [${headRot.map((n) => n.toFixed(4)).join(', ')}]`;
+  const fmt3 = (v: Vec3) => `[${v.map((n) => n.toFixed(3)).join(', ')}]`;
+  const fmt4 = (v: Vec3) => `[${v.map((n) => n.toFixed(4)).join(', ')}]`;
+  const valueText = `DRIVER.POSITION: ${fmt3(driverPos)}
+DRIVER.ROTATION: ${fmt4(driverRot)}
+BODY.POSITION: ${fmt3(bodyPos)}
+ARMS.LEFT.POSITION: ${fmt3(leftArmPos)}
+ARMS.RIGHT.POSITION: ${fmt3(rightArmPos)}
+LEGS.LEFT.POSITION: ${fmt3(leftLegPos)}
+LEGS.LEFT.ROTATION: ${fmt4(leftLegRot)}
+LEGS.RIGHT.POSITION: ${fmt3(rightLegPos)}
+LEGS.RIGHT.ROTATION: ${fmt4(rightLegRot)}
+FEET.LEFT.POSITION: ${fmt3(leftFootPos)}
+FEET.RIGHT.POSITION: ${fmt3(rightFootPos)}
+HEAD.POSITION: ${fmt3(headPos)}
+HEAD.ROTATION: ${fmt4(headRot)}`;
 
   if (!selectedCharacter) return null;
 
@@ -224,47 +357,142 @@ HEAD.ROTATION: [${headRot.map((n) => n.toFixed(4)).join(', ')}]`;
     </label>
   );
 
+  const CollapseSection = ({
+    id,
+    title,
+    children,
+  }: {
+    id: string;
+    title: string;
+    children: ReactNode;
+  }) => {
+    const open = sectionOpen[id] ?? false;
+    return (
+      <div className="game-select-debug-collapse">
+        <button
+          type="button"
+          className="game-select-debug-collapse-btn"
+          onClick={() => toggleSection(id)}
+          aria-expanded={open}
+        >
+          <span className="game-select-debug-collapse-chevron">{open ? '▼' : '▶'}</span>
+          {title}
+        </button>
+        {open && <div className="game-select-debug-collapse-content">{children}</div>}
+      </div>
+    );
+  };
+
   return (
     <div className="game-select-preview-wrap">
       <div ref={containerRef} className="canvas-container game-select-preview" />
+      {debugMode && (
       <div className="game-select-debug-panel">
-        <h3 className="game-select-debug-title">Debug: driver & head (temporary)</h3>
-        <div className="game-select-debug-section">
-          <strong>Body position</strong>
-          {(['x', 'y', 'z'] as const).map((axis, i) =>
-            slider(axis, driverPos[i], (v) => updateDriverPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
-          )}
-        </div>
-        <div className="game-select-debug-section">
-          <strong>Body rotation (rad)</strong>
-          {(['x', 'y', 'z'] as const).map((axis, i) =>
-            slider(axis, driverRot[i], (v) => updateDriverRot(i as 0 | 1 | 2, v), -Math.PI, Math.PI, 0.01),
-          )}
-        </div>
-        <div className="game-select-debug-section">
-          <strong>Head position</strong>
-          {(['x', 'y', 'z'] as const).map((axis, i) =>
-            slider(
-              axis,
-              headPos[i],
-              (v) => updateHeadPos(i as 0 | 1 | 2, v),
-              -0.5,
-              axis === 'y' ? 1 : 0.5,
-              0.01,
-            ),
-          )}
-        </div>
-        <div className="game-select-debug-section">
-          <strong>Head rotation (rad)</strong>
-          {(['x', 'y', 'z'] as const).map((axis, i) =>
-            slider(axis, headRot[i], (v) => updateHeadRot(i as 0 | 1 | 2, v), -Math.PI, Math.PI, 0.01),
-          )}
-        </div>
-        <label className="game-select-debug-output">
-          <strong>Copy these values:</strong>
-          <textarea readOnly rows={6} value={valueText} className="game-select-debug-textarea" />
-        </label>
+        <h3 className="game-select-debug-title">Debug: driver (temporary)</h3>
+        <CollapseSection id="driver" title="Driver">
+          <div className="game-select-debug-section">
+            <strong>Position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, driverPos[i], (v) => updateDriverPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+          <div className="game-select-debug-section">
+            <strong>Rotation (rad)</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, driverRot[i], (v) => updateDriverRot(i as 0 | 1 | 2, v), -Math.PI, Math.PI, 0.01),
+            )}
+          </div>
+        </CollapseSection>
+        <CollapseSection id="body" title="Torso">
+          <div className="game-select-debug-section">
+            <strong>Position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, bodyPos[i], (v) => updateBodyPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+        </CollapseSection>
+        <CollapseSection id="arms" title="Arms">
+          <div className="game-select-debug-section">
+            <strong>Left arm position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, leftArmPos[i], (v) => updateLeftArmPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+          <div className="game-select-debug-section">
+            <strong>Right arm position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, rightArmPos[i], (v) => updateRightArmPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+        </CollapseSection>
+        <CollapseSection id="legs" title="Legs">
+          <div className="game-select-debug-section">
+            <strong>Left leg position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, leftLegPos[i], (v) => updateLeftLegPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+          <div className="game-select-debug-section">
+            <strong>Left leg rotation (rad)</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, leftLegRot[i], (v) => updateLeftLegRot(i as 0 | 1 | 2, v), -Math.PI, Math.PI, 0.01),
+            )}
+          </div>
+          <div className="game-select-debug-section">
+            <strong>Right leg position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, rightLegPos[i], (v) => updateRightLegPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+          <div className="game-select-debug-section">
+            <strong>Right leg rotation (rad)</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, rightLegRot[i], (v) => updateRightLegRot(i as 0 | 1 | 2, v), -Math.PI, Math.PI, 0.01),
+            )}
+          </div>
+        </CollapseSection>
+        <CollapseSection id="feet" title="Feet">
+          <div className="game-select-debug-section">
+            <strong>Left foot position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, leftFootPos[i], (v) => updateLeftFootPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+          <div className="game-select-debug-section">
+            <strong>Right foot position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, rightFootPos[i], (v) => updateRightFootPos(i as 0 | 1 | 2, v), -0.5, 0.5, 0.01),
+            )}
+          </div>
+        </CollapseSection>
+        <CollapseSection id="head" title="Head">
+          <div className="game-select-debug-section">
+            <strong>Position</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(
+                axis,
+                headPos[i],
+                (v) => updateHeadPos(i as 0 | 1 | 2, v),
+                -0.5,
+                axis === 'y' ? 1 : 0.5,
+                0.01,
+              ),
+            )}
+          </div>
+          <div className="game-select-debug-section">
+            <strong>Rotation (rad)</strong>
+            {(['x', 'y', 'z'] as const).map((axis, i) =>
+              slider(axis, headRot[i], (v) => updateHeadRot(i as 0 | 1 | 2, v), -Math.PI, Math.PI, 0.01),
+            )}
+          </div>
+        </CollapseSection>
+        <CollapseSection id="output" title="Copy values">
+          <label className="game-select-debug-output">
+            <textarea readOnly rows={16} value={valueText} className="game-select-debug-textarea" />
+          </label>
+        </CollapseSection>
       </div>
+      )}
     </div>
   );
 }

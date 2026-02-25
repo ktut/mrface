@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import * as THREE from 'three';
+import { IS_DEV } from '../config';
 
 const STORAGE_KEY = 'mrface-app';
 
@@ -58,6 +59,11 @@ interface AppContextValue {
   deleteCharacter: (index: number) => void;
   /** Clamp selectedCharacterIndex after characters change. */
   clampedSelectedIndex: number;
+  /** True when running npm run dev; checkbox and debug UI only shown in dev. */
+  isDev: boolean;
+  /** When isDev, user can toggle; when !isDev, effectively false. Controls debug buttons and game-select debug panel. */
+  debugMode: boolean;
+  setDebugMode: (value: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -85,6 +91,7 @@ export function AppProvider({
   const [selectedCharacterIndex, setSelectedCharacterIndexState] = useState(initialSelectedIndex);
   const [helmetHue, setHelmetHueState] = useState(initialHelmetHue);
   const [selectedGameId, setSelectedGameIdState] = useState<string | null>(null);
+  const [debugMode, setDebugModeState] = useState(IS_DEV);
 
   const setCharacters = useCallback((action: React.SetStateAction<CharacterEntry[]>) => {
     setCharactersState(action);
@@ -169,6 +176,10 @@ export function AppProvider({
   const clampedSelectedIndex =
     characters.length === 0 ? 0 : Math.min(selectedCharacterIndex, characters.length - 1);
 
+  const setDebugMode = useCallback((value: boolean) => {
+    setDebugModeState(value);
+  }, []);
+
   const value = useMemo<AppContextValue>(
     () => ({
       characters,
@@ -184,6 +195,9 @@ export function AppProvider({
       updateCharacter,
       deleteCharacter,
       clampedSelectedIndex,
+      isDev: IS_DEV,
+      debugMode: IS_DEV ? debugMode : false,
+      setDebugMode,
     }),
     [
       characters,
@@ -199,6 +213,8 @@ export function AppProvider({
       updateCharacter,
       deleteCharacter,
       clampedSelectedIndex,
+      debugMode,
+      setDebugMode,
     ],
   );
 

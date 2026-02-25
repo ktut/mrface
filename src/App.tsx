@@ -69,6 +69,9 @@ export function App() {
     deleteCharacter,
     setSelectedGameId,
     clampedSelectedIndex,
+    isDev,
+    debugMode,
+    setDebugMode,
   } = useApp();
 
   const [screen, setScreen] = useState<'home' | 'gameSelect' | 'cartGame'>('home');
@@ -262,6 +265,19 @@ export function App() {
 
   return (
     <div className="app-shell">
+      {isDev && (
+        <div className="debug-mode-toggle" role="group" aria-label="Debug mode">
+          <label className="debug-mode-label">
+            <input
+              type="checkbox"
+              checked={debugMode}
+              onChange={(e) => setDebugMode(e.target.checked)}
+              aria-label="Debug mode"
+            />
+            <span>Debug Mode</span>
+          </label>
+        </div>
+      )}
       <div
         className={`global-progress ${progress > 0 && progress < 100 ? 'global-progress--active' : ''} ${progress === 100 ? 'global-progress--complete' : ''}`}
         role="progressbar"
@@ -320,42 +336,42 @@ export function App() {
                 </span>
                 Upload Face
               </button>
-              {/* Child / Adult test buttons — commented out
-              <div className="test-image-buttons" role="group" aria-label="Load test image">
-                <button
-                  type="button"
-                  className="test-image-btn"
-                  onClick={async () => {
-                    if (uploadDisabled) return;
-                    try {
-                      const img = await loadImage('/test/test-face.png');
-                      await processImage(img, characters.length === 0);
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                  disabled={uploadDisabled}
-                >
-                  Child test
-                </button>
-                <button
-                  type="button"
-                  className="test-image-btn"
-                  onClick={async () => {
-                    if (uploadDisabled) return;
-                    try {
-                      const img = await loadImage('/test/test-face-adult.png');
-                      await processImage(img, characters.length === 0);
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                  disabled={uploadDisabled}
-                >
-                  Adult test
-                </button>
-              </div>
-              */}
+              {debugMode && (
+                <div className="test-image-buttons" role="group" aria-label="Load test image">
+                  <button
+                    type="button"
+                    className="test-image-btn"
+                    onClick={async () => {
+                      if (uploadDisabled) return;
+                      try {
+                        const img = await loadImage('/test/test-face.png');
+                        await processImage(img, characters.length === 0);
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                    disabled={uploadDisabled}
+                  >
+                    Child test
+                  </button>
+                  <button
+                    type="button"
+                    className="test-image-btn"
+                    onClick={async () => {
+                      if (uploadDisabled) return;
+                      try {
+                        const img = await loadImage('/test/test-face-adult.png');
+                        await processImage(img, characters.length === 0);
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                    disabled={uploadDisabled}
+                  >
+                    Adult test
+                  </button>
+                </div>
+              )}
               <input
                 id="file-input"
                 type="file"

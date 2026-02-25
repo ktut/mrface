@@ -2,6 +2,9 @@
  * Application constants — edit this file to tune behaviour across the app.
  */
 
+/** True when running via `npm run dev` (Vite dev server); false in production build. */
+export const IS_DEV = import.meta.env.DEV;
+
 export const CONFIG = {
   // ─── Helmet (only head topper) ───────────────────────────────────────────────
   HELMET: {
@@ -109,23 +112,60 @@ export const CONFIG = {
       ROUGHNESS: 0.25,
       METALNESS: 0.85,
     },
-    /** Driver (body box + character head) placement and appearance. */
+    /** Driver (torso + arms + legs + feet + head) placement and appearance. */
     DRIVER: {
-      /** Position of the driver group (body + head) relative to kart root. Y = seat height, Z negative = back toward seat. */
+      /** Position of the driver group relative to kart root. */
       POSITION: [-0.280, 0.230, -0.010] as [number, number, number],
       /** Rotation (radians) of the driver group: [x, y, z]. */
       ROTATION: [0.0284, 0.0084, 0.1384] as [number, number, number],
-      /** Body box (torso placeholder) in driver local space. */
+      /** Torso (slim box) in driver local space. */
       BODY: {
-        WIDTH: 0.35,
-        HEIGHT: 0.4,
-        DEPTH: 0.2,
-        /** Body box center Y in driver group (top of box = OFFSET_Y + HEIGHT/2). */
+        WIDTH: 0.22,
+        HEIGHT: 0.36,
+        DEPTH: 0.14,
+        /** Body box center Y in driver group. */
         OFFSET_Y: 0.2,
+        /** Offset [x, y, z] of torso from driver origin (for fine-tuning). */
+        POSITION: [0.1, 0, 0] as [number, number, number],
         COLOR: 0x334455,
       },
-      /** Y in driver space where the top of the body box is (head sits on this). */
-      BODY_TOP_Y: 0.4,
+      /** Arms (cylinders) reaching toward steering wheel. Y-up cylinder, length along Y. */
+      ARMS: {
+        RADIUS: 0.04,
+        LENGTH: 0.28,
+        COLOR: 0x334455,
+        /** Left arm: position in driver space; rotation [x,y,z] so arm points to wheel. */
+        LEFT: {
+          POSITION: [0.06, 0.32, -0.12] as [number, number, number],
+          ROTATION: [0.4, 0, 0.1] as [number, number, number],
+        },
+        RIGHT: {
+          POSITION: [0.05, 0.27, 0.15] as [number, number, number],
+          ROTATION: [0.4, 0, -0.1] as [number, number, number],
+        },
+      },
+      /** Lower legs (cylinders) toward pedals. */
+      LEGS: {
+        RADIUS: 0.05,
+        LENGTH: 0.35,
+        COLOR: 0x334455,
+        LEFT: {
+          POSITION: [0.19, -0.01, -0.08] as [number, number, number],
+          /** Rotation (radians) [x, y, z]. */
+          ROTATION: [-0.1616, 0.0584, 0.8584] as [number, number, number],
+        },
+        RIGHT: {
+          POSITION: [0.19, 0.04, 0.11] as [number, number, number],
+          ROTATION: [0.8984, 2.7984, -1.3116] as [number, number, number],
+        },
+      },
+      /** Feet (small boxes) on pedals. */
+      FEET: {
+        SIZE: [0.12, 0.06, 0.08] as [number, number, number],
+        COLOR: 0x2a2a2a,
+        LEFT: { POSITION: [0.38, -0.03, 0.14] as [number, number, number] },
+        RIGHT: { POSITION: [0.38, -0.11, -0.14] as [number, number, number] },
+      },
       /** Character head on top of body. */
       HEAD: {
         /** Head scale = SCALE_FACTOR / max(head bbox size) so head fits body. */

@@ -18,6 +18,31 @@ body {
   inset: 0;
 }
 
+// Debug mode checkbox: only visible in dev (npm run dev); fixed top-left, highest z-index
+.debug-mode-toggle {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  padding: v.$space-sm v.$space-md;
+  background: rgba(0, 0, 0, 0.85);
+  border-bottom-right: 2px solid v.$color-border;
+  font-size: v.$font-size-xs;
+  color: v.$color-text;
+}
+
+.debug-mode-label {
+  display: flex;
+  align-items: center;
+  gap: v.$space-xs;
+  cursor: pointer;
+  user-select: none;
+
+  input[type='checkbox'] {
+    cursor: pointer;
+  }
+}
+
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -680,6 +705,44 @@ body {
   margin: 0 0 v.$space-sm;
   font-size: v.$font-size-sm;
   font-weight: v.$font-weight-semibold;
+}
+
+.game-select-debug-collapse {
+  margin-bottom: v.$space-xxs;
+  border: 1px solid v.$color-border;
+  border-radius: v.$radius-sm;
+  overflow: hidden;
+}
+
+.game-select-debug-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: v.$space-xs;
+  width: 100%;
+  padding: v.$space-xs v.$space-sm;
+  font-size: inherit;
+  font-weight: v.$font-weight-semibold;
+  color: v.$color-text;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.game-select-debug-collapse-chevron {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  opacity: 0.8;
+}
+
+.game-select-debug-collapse-content {
+  padding: v.$space-xs v.$space-sm v.$space-sm;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid v.$color-border;
 }
 
 .game-select-debug-section {

@@ -6,6 +6,37 @@ import { VehicleController } from '../physics/VehicleController';
 import { InputManager } from '../engine/InputManager';
 import { buildKartCharacter } from '../character/KartCharacter';
 
+/** Creates a subtle repeating grid texture for the kart ground (green base + darker grid lines). */
+function createGroundGridTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  // Base fill: green ground
+  ctx.fillStyle = '#2d5a3d';
+  ctx.fillRect(0, 0, size, size);
+  // Subtle grid: slightly darker green, thin lines
+  const gridSpacing = 32;
+  const lineColor = 'rgba(0, 0, 0, 0.14)';
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i <= size; i += gridSpacing) {
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, size);
+    ctx.moveTo(0, i);
+    ctx.lineTo(size, i);
+  }
+  ctx.stroke();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(10, 10); // 100x100 plane → 10 units per tile, subtle grid scale
+  texture.needsUpdate = true;
+  return texture;
+}
+
 interface CartGameScreenProps {
   onExitToMenu: () => void;
 }
@@ -18,15 +49,20 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const mobileInputRef = useRef({ steer: 0, throttle: 0, brake: 0 });
 
-  // Camera orbit: directly behind kart = yaw 0 with offset (0, height, -distance).
+  // Camera orbit: spherical around kart. yaw = horizontal, pitch = elevation (0 = horizontal).
   const CAM_DISTANCE = 6;
   const CAM_HEIGHT = 4;
-  const defaultCameraYaw = 0;
-  const cameraOrbitRef = useRef({ yaw: defaultCameraYaw });
-  const pointerRef = useRef<{ isDown: boolean; startX: number; startYaw: number }>({
+  const CAM_RADIUS = Math.hypot(CAM_DISTANCE, CAM_HEIGHT);
+  const defaultPitch = Math.atan2(CAM_HEIGHT, CAM_DISTANCE);
+  const cameraOrbitRef = useRef({ yaw: 0, pitch: defaultPitch });
+  const PITCH_MIN = -0.4;  // don't go below horizon too much
+  const PITCH_MAX = Math.PI / 2 - 0.15;
+  const pointerRef = useRef<{ isDown: boolean; startX: number; startY: number; startYaw: number; startPitch: number }>({
     isDown: false,
     startX: 0,
+    startY: 0,
     startYaw: 0,
+    startPitch: 0,
   });
 
   const gameRef = useRef<{
@@ -85,7 +121,13 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         scene.add(key);
 
         const groundGeo = new THREE.PlaneGeometry(100, 100);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x2d5a3d });
+        const groundTexture = createGroundGridTexture();
+        const groundMat = new THREE.MeshStandardMaterial({
+          color: 0x2d5a3d,
+          map: groundTexture,
+          roughness: 0.9,
+          metalness: 0,
+        });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
         groundMesh.receiveShadow = true;
@@ -149,11 +191,12 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
 
       const chassis = g.vehicle.getChassisBody();
       const t = chassis.translation();
-      const yaw = cameraOrbitRef.current.yaw;
+      const { yaw, pitch } = cameraOrbitRef.current;
+      const cosP = Math.cos(pitch);
       const targetPos = new THREE.Vector3(
-        t.x + CAM_DISTANCE * Math.sin(yaw),
-        t.y + CAM_HEIGHT,
-        t.z - CAM_DISTANCE * Math.cos(yaw),
+        t.x + CAM_RADIUS * cosP * Math.sin(yaw),
+        t.y + CAM_RADIUS * Math.sin(pitch),
+        t.z - CAM_RADIUS * cosP * Math.cos(yaw),
       );
       g.camera.position.lerp(targetPos, 0.05);
       g.camera.lookAt(t.x, t.y + 1, t.z);
@@ -179,7 +222,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
     return () => window.removeEventListener('resize', onResize);
   }, [ready]);
 
-  // Swipe / drag on canvas to orbit the camera around the kart.
+  // Swipe / drag on canvas to orbit the camera around the kart (horizontal and vertical).
   const ORBIT_SENSITIVITY = 0.004;
   useEffect(() => {
     const g = gameRef.current;
@@ -189,14 +232,19 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
     const onPointerDown = (e: PointerEvent) => {
       pointerRef.current.isDown = true;
       pointerRef.current.startX = e.clientX;
+      pointerRef.current.startY = e.clientY;
       pointerRef.current.startYaw = cameraOrbitRef.current.yaw;
+      pointerRef.current.startPitch = cameraOrbitRef.current.pitch;
     };
 
     const onPointerMove = (e: PointerEvent) => {
       if (!pointerRef.current.isDown) return;
       e.preventDefault();
       const dx = e.clientX - pointerRef.current.startX;
-      cameraOrbitRef.current.yaw = pointerRef.current.startYaw - dx * ORBIT_SENSITIVITY;
+      const dy = e.clientY - pointerRef.current.startY;
+      const orbit = cameraOrbitRef.current;
+      orbit.yaw = pointerRef.current.startYaw - dx * ORBIT_SENSITIVITY;
+      orbit.pitch = Math.min(PITCH_MAX, Math.max(PITCH_MIN, pointerRef.current.startPitch + dy * ORBIT_SENSITIVITY));
     };
 
     const onPointerUp = () => {

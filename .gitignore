@@ -1,0 +1,30 @@
+# Dependencies — installed on server via npm ci / npm install
+node_modules/
+
+# Build output — produced during deploy/build
+dist/
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Logs and caches
+*.log
+npm-debug.log*
+.npm
+.vite/
+.cache/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.sublime-*
+
+# Optional
+coverage/
+*.tsbuildinfo

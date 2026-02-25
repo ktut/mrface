@@ -3,6 +3,26 @@
  */
 
 export const CONFIG = {
+  // ─── Hair (blonde frizzy hair head topper) ───────────────────────────────────
+  HAIR: {
+    COLOR: 0xc9a87a,           // Soft warm blonde (not orange)
+    HIGHLIGHT: 0xe5d0a8,      // Lighter at tips
+    ROUGHNESS: 0.95,
+    METALNESS: 0.0,
+    STRAND_COUNT: 2600,        // Instanced strands; one draw call
+    SCALE_FACTOR: 1.25,        // Overall hair scale (length + thickness); 1 = base size
+    STRAND_LENGTH: 0.22,       // Fraction of head radius (before SCALE_FACTOR)
+    STRAND_RADIUS: 0.038,      // Fraction of head radius (before SCALE_FACTOR)
+    STRAND_TAPER: 0.35,       // Tip radius = root * this (unused for tube)
+    // Positioning on head (all in “head radius” units unless noted):
+    OFFSET_UP: 0.4,           // Move whole hair up (+) or down (-) from crown
+    OFFSET_BACK: -1.0,         // Move whole hair back (+) or forward (-)
+    OFFSET_SIDE: 0.0,         // Move whole hair left (-) or right (+) in X
+    ROOT_RADIUS_MIN: 0.35,    // Min fraction of head radius for root dome (crown = 0)
+    ROOT_RADIUS_MAX: 0.9,     // Max fraction — how far down the sides roots go (1 = full dome)
+    ROTATION_BACK_DEGREES: -30, // Tilt hair backward (positive = toward back of head)
+  },
+
   // ─── Helmet ─────────────────────────────────────────────────────────────────
   HELMET: {
     OBJ_URL: '/models/Helmet__Sfera_v1_L1.123c237682f7-5c65-4abc-81fb-c187b7186453/18893_Helmet-Sfera_v1.obj',

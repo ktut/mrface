@@ -1,12 +1,18 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  plugins: [
+    react({
+      babel: {
+        plugins: ['babel-plugin-react-compiler'],
+      },
+    }),
+  ],
   server: {
     port: 5173,
   },
   optimizeDeps: {
-    // @mediapipe/face_mesh loads WASM and model files at runtime from CDN.
-    // Excluding it from pre-bundling prevents Vite from corrupting the WASM binary.
     exclude: ['@mediapipe/face_mesh'],
   },
 });

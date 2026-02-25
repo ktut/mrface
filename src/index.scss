@@ -1,0 +1,112 @@
+@use 'styles/variables' as v;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: v.$color-bg;
+  color: v.$color-text;
+  font-family: v.$font-family-base;
+  overflow: hidden;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
+}
+
+.canvas-container {
+  position: fixed;
+  inset: 0;
+}
+
+.head-topper-control {
+  position: fixed;
+  top: v.$space-md;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: v.$space-xs;
+  padding: v.$space-xs v.$space-md;
+  background: v.$color-surface;
+  border-radius: v.$radius-pill;
+  border: 1px solid v.$color-border;
+  z-index: v.$z-overlay;
+
+  button {
+    width: v.$space-xl;
+    height: v.$space-xl;
+    padding: 0;
+    background: v.$color-border;
+    border: none;
+    border-radius: v.$radius-circle;
+    color: v.$color-text;
+    font-family: inherit;
+    font-size: v.$font-size-lg;
+    line-height: v.$line-height-tight;
+    cursor: pointer;
+    transition: background v.$transition-base;
+
+    &:hover {
+      background: v.$color-border-hover;
+    }
+  }
+}
+
+.topper-label {
+  min-width: 10rem;
+  text-align: center;
+  font-size: v.$font-size-sm;
+  color: v.$color-text-secondary;
+}
+
+.ui-overlay {
+  position: fixed;
+  bottom: v.$space-xl;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: v.$space-sm;
+  z-index: v.$z-overlay;
+}
+
+.status {
+  font-size: v.$font-size-xs;
+  color: v.$color-text-muted;
+  min-height: 1.2em;
+  letter-spacing: v.$letter-spacing-tight;
+}
+
+.upload-btn {
+  padding: v.$space-sm v.$space-xl;
+  background: v.$color-primary;
+  border: none;
+  border-radius: v.$radius-pill;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-base;
+  font-weight: v.$font-weight-semibold;
+  cursor: pointer;
+  transition: transform v.$transition-fast, background v.$transition-base,
+    opacity v.$transition-base;
+
+  &:hover:not(:disabled) {
+    background: v.$color-primary-hover;
+    transform: scale(1.03);
+  }
+
+  &:disabled {
+    opacity: v.$color-btn-disabled-opacity;
+    cursor: not-allowed;
+  }
+}
+
+#file-input {
+  display: none;
+}

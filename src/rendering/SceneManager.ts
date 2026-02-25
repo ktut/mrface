@@ -152,6 +152,13 @@ export class SceneManager {
   // ── Public API ──────────────────────────────────────────────────────────────
 
   /**
+   * Return the current character head group, or null if none.
+   */
+  getCharacterHead(): THREE.Object3D | null {
+    return this.currentHead;
+  }
+
+  /**
    * Replace the placeholder / previous head with a freshly built face group.
    * Accepts any Object3D (typically the THREE.Group from FaceMeshBuilder.build()).
    */

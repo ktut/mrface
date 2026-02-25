@@ -92,17 +92,12 @@ body {
 }
 
 .helmet-hue-control {
-  position: absolute;
-  top: v.$space-xl;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   padding: v.$space-xs v.$space-md;
   background: v.$color-surface;
   border-radius: v.$radius-pill;
   border: 1px solid v.$color-border;
-  z-index: v.$z-overlay;
 }
 
 .helmet-hue-slider {
@@ -417,4 +412,326 @@ body {
   &.character-menu-btn--danger:hover {
     background: rgba(255, 80, 80, 0.15);
   }
+}
+
+.choose-game-btn {
+  padding: v.$space-sm v.$space-lg;
+  background: v.$color-primary;
+  border: none;
+  border-radius: v.$radius-pill;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-base;
+  font-weight: v.$font-weight-semibold;
+  cursor: pointer;
+  transition: background v.$transition-fast, transform v.$transition-fast;
+
+  &:hover {
+    background: v.$color-primary-hover;
+    transform: scale(1.03);
+  }
+}
+
+.back-from-games-btn {
+  padding: v.$space-xs v.$space-md;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: v.$radius-sm;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-base;
+  cursor: pointer;
+  margin-bottom: v.$space-xs;
+}
+
+.game-swiper {
+  display: flex;
+  align-items: center;
+  gap: v.$space-xs;
+}
+
+.game-strip {
+  display: flex;
+  align-items: stretch;
+  gap: v.$space-sm;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: v.$space-xs 0;
+}
+
+.game-option {
+  flex-shrink: 0;
+  scroll-snap-align: center;
+
+  button {
+    padding: v.$space-md v.$space-lg;
+    min-width: 10rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: v.$radius-sm;
+    color: v.$color-text;
+    font-family: inherit;
+    font-size: v.$font-size-base;
+    cursor: pointer;
+    transition: border-color v.$transition-fast, background v.$transition-fast;
+  }
+
+  &.game-option--selected button {
+    border-color: v.$color-primary;
+    background: rgba(v.$color-primary, 0.2);
+  }
+}
+
+.game-option-label {
+  display: block;
+  text-align: center;
+}
+
+// ─── Cart game screen ───────────────────────────────────────────────────────
+.cart-game-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a2e;
+
+  &.cart-game-screen--error {
+    align-items: center;
+    justify-content: center;
+    gap: v.$space-md;
+    color: v.$color-text;
+  }
+}
+
+.cart-game-canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.cart-game-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: v.$color-text;
+  font-size: v.$font-size-lg;
+}
+
+.cart-game-pause-btn {
+  position: absolute;
+  top: v.$space-md;
+  right: v.$space-md;
+  z-index: v.$z-overlay;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: v.$radius-sm;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+}
+
+.cart-game-pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: v.$z-overlay + 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.cart-game-pause-menu {
+  padding: v.$space-xl;
+  background: v.$color-surface;
+  border: 1px solid v.$color-border;
+  border-radius: v.$space-md;
+  min-width: 16rem;
+  text-align: center;
+
+  h2 {
+    margin: 0 0 v.$space-md;
+    font-size: v.$font-size-lg;
+    font-weight: v.$font-weight-normal;
+    color: v.$color-text;
+  }
+}
+
+.cart-game-menu-btn {
+  display: block;
+  width: 100%;
+  padding: v.$space-sm v.$space-md;
+  margin-top: v.$space-xs;
+  background: v.$color-primary;
+  border: none;
+  border-radius: v.$radius-sm;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-base;
+  cursor: pointer;
+  transition: background v.$transition-fast;
+
+  &:hover {
+    background: v.$color-primary-hover;
+  }
+}
+
+.cart-game-mobile-controls {
+  position: absolute;
+  bottom: v.$space-lg;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: v.$z-overlay;
+  padding: 0 v.$space-md;
+
+  > * {
+    pointer-events: auto;
+    display: flex;
+    gap: v.$space-sm;
+  }
+}
+
+.cart-game-mobile-steer {
+  flex-direction: row;
+}
+
+.cart-game-mobile-drive {
+  flex-direction: column;
+}
+
+.cart-game-mobile-btn {
+  padding: v.$space-md v.$space-lg;
+  min-width: 3.5rem;
+  min-height: 3rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: v.$radius-sm;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-sm;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+
+  &:active {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  &.cart-game-mobile-gas {
+    background: rgba(0, 100, 0, 0.4);
+  }
+
+  &.cart-game-mobile-brake {
+    background: rgba(120, 0, 0, 0.4);
+  }
+}
+
+// ─── Game select debug panel (temporary) ─────────────────────────────────────
+.game-select-preview-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+}
+
+.game-select-preview-wrap .canvas-container.game-select-preview {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.game-select-debug-panel {
+  flex-shrink: 0;
+  width: 18rem;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: v.$space-sm;
+  background: rgba(0, 0, 0, 0.9);
+  border-left: 1px solid v.$color-border;
+  font-size: v.$font-size-xs;
+  color: v.$color-text;
+  z-index: 20;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+}
+
+.game-select-debug-title {
+  margin: 0 0 v.$space-sm;
+  font-size: v.$font-size-sm;
+  font-weight: v.$font-weight-semibold;
+}
+
+.game-select-debug-section {
+  margin-bottom: v.$space-sm;
+
+  strong {
+    display: block;
+    margin-bottom: v.$space-xxs;
+  }
+}
+
+.game-select-debug-row {
+  display: flex;
+  align-items: center;
+  gap: v.$space-xs;
+  margin-bottom: v.$space-xxs;
+}
+
+.game-select-debug-label {
+  flex: 0 0 1.2rem;
+}
+
+.game-select-debug-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-select-debug-val {
+  flex: 0 0 3.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-select-debug-output {
+  display: block;
+  margin-top: v.$space-sm;
+
+  strong {
+    display: block;
+    margin-bottom: v.$space-xxs;
+  }
+}
+
+.game-select-debug-textarea {
+  display: block;
+  width: 100%;
+  padding: v.$space-xs;
+  font-family: ui-monospace, monospace;
+  font-size: 0.7rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid v.$color-border;
+  border-radius: v.$radius-sm;
+  color: v.$color-text;
+  resize: vertical;
 }

@@ -95,6 +95,49 @@ export const CONFIG = {
     IDLE_ROTATION_SPEED: 0.002,
   },
 
+  // ─── Kart (go kart OBJ for racing game) ──────────────────────────────────────
+  KART: {
+    OBJ_URL: '/models/go_kart_v1_L1.123c544c2090-89ab-4f9b-804f-e6b7947ef625/16833_go_kart_v1_NEW.obj',
+    /** Scale applied to loaded OBJ so it matches physics chassis size (~2 x 1 x 1 world units). */
+    SCALE: 1,
+    /** Rotation (radians) applied so kart sits on wheels: often OBJ is Z-up, so rotateX(-π/2) gives Y-up. */
+    ROTATION_X: -Math.PI / 2,
+    ROTATION_Z: 0,
+    /** Kart mesh material (applied to loaded OBJ). */
+    MATERIAL: {
+      COLOR: 0x2a2a2a,
+      ROUGHNESS: 0.25,
+      METALNESS: 0.85,
+    },
+    /** Driver (body box + character head) placement and appearance. */
+    DRIVER: {
+      /** Position of the driver group (body + head) relative to kart root. Y = seat height, Z negative = back toward seat. */
+      POSITION: [-0.280, 0.230, -0.010] as [number, number, number],
+      /** Rotation (radians) of the driver group: [x, y, z]. */
+      ROTATION: [0.0284, 0.0084, 0.1384] as [number, number, number],
+      /** Body box (torso placeholder) in driver local space. */
+      BODY: {
+        WIDTH: 0.35,
+        HEIGHT: 0.4,
+        DEPTH: 0.2,
+        /** Body box center Y in driver group (top of box = OFFSET_Y + HEIGHT/2). */
+        OFFSET_Y: 0.2,
+        COLOR: 0x334455,
+      },
+      /** Y in driver space where the top of the body box is (head sits on this). */
+      BODY_TOP_Y: 0.4,
+      /** Character head on top of body. */
+      HEAD: {
+        /** Head scale = SCALE_FACTOR / max(head bbox size) so head fits body. */
+        SCALE_FACTOR: 0.4,
+        /** Position [x, y, z] of head in driver group space. */
+        POSITION: [0.200, 0.560, 0.000] as [number, number, number],
+        /** Rotation (radians) of head: [x, y, z]. */
+        ROTATION: [-0.0516, 1.6584, -0.0116] as [number, number, number],
+      },
+    },
+  },
+
   // ─── Face capture (MediaPipe) ───────────────────────────────────────────────
   FACE_CAPTURE: {
     MIN_DETECTION_CONFIDENCE: 0.5,

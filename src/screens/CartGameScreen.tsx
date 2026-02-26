@@ -61,6 +61,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
   const CAM_HEIGHT = 4;
   const CAM_RADIUS = Math.hypot(CAM_DISTANCE, CAM_HEIGHT);
   const defaultPitch = Math.atan2(CAM_HEIGHT, CAM_DISTANCE);
+  // Start behind the kart: kart drives toward +Z in world, so "behind" is yaw = 0 (camera at -Z).
   const cameraOrbitRef = useRef({ yaw: 0, pitch: defaultPitch });
   const PITCH_MIN = -0.4;  // don't go below horizon too much
   const PITCH_MAX = Math.PI / 2 - 0.15;
@@ -71,7 +72,10 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
     startYaw: 0,
     startPitch: 0,
   });
-
+  /** When not dragging, camera yaw smoothly follows kart facing (Mario Kart style). */
+  const CAM_FOLLOW_SPEED = 2.5;
+  const _chassisQuat = useRef(new THREE.Quaternion());
+  const _kartForward = useRef(new THREE.Vector3(1, 0, 0));
   const gameRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
@@ -200,7 +204,22 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
 
       const chassis = g.vehicle.getChassisBody();
       const t = chassis.translation();
-      const { yaw, pitch } = cameraOrbitRef.current;
+      const orbit = cameraOrbitRef.current;
+      const pointerDown = pointerRef.current.isDown;
+      // When not dragging, smoothly rotate camera behind the kart (Mario Kart style).
+      // Camera offset is (sin(yaw), 0, -cos(yaw)). Kart drives toward +Z in world; behind = -Z, so we need yaw=0.
+      // Chassis back in chassis space = +Z; we want camera offset = -back so targetYaw = atan2(-back.x, back.z).
+      if (!pointerDown) {
+        const r = chassis.rotation();
+        _chassisQuat.current.set(r.x, r.y, r.z, r.w);
+        _kartForward.current.set(0, 0, 1).applyQuaternion(_chassisQuat.current);
+        const targetYaw = Math.atan2(-_kartForward.current.x, _kartForward.current.z);
+        let diff = targetYaw - orbit.yaw;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        orbit.yaw += diff * Math.min(1, CAM_FOLLOW_SPEED * dt);
+      }
+      const { yaw, pitch } = orbit;
       const cosP = Math.cos(pitch);
       const targetPos = new THREE.Vector3(
         t.x + CAM_RADIUS * cosP * Math.sin(yaw),

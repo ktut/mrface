@@ -66,6 +66,8 @@ export class InputManager {
         return;
       }
     }
+    // No gamepad steer: clear so steering snaps back when using gamepad fallback
+    this.steerValue = 0;
   }
 
   /** Set mobile on-screen values (e.g. from virtual buttons). */
@@ -96,7 +98,12 @@ export class InputManager {
       steer = this.steerValue;
     }
 
-    this.steerValue += (steer - this.steerValue) * Math.min(1, STEER_SPEED * dt);
+    // Only apply steering while held; snap back to straight when released (no smooth return).
+    if (steer === 0) {
+      this.steerValue = 0;
+    } else {
+      this.steerValue += (steer - this.steerValue) * Math.min(1, STEER_SPEED * dt);
+    }
     return {
       throttle,
       brake,

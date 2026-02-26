@@ -6,6 +6,9 @@ import { VehicleController } from '../physics/VehicleController';
 import { InputManager } from '../engine/InputManager';
 import { buildKartCharacter } from '../character/KartCharacter';
 import { CONFIG } from '../config';
+import { RACE_CONFIG } from '../race/types';
+import { createInitialRaceState } from '../race/state';
+import { addTrackColliders, addTrackMeshes, KART_START_POSITION, KART_START_ROTATION } from '../race/track';
 
 /** Offset so kart visual (nose along +X in chassis space) faces +Z (away from camera). Applied after chassis sync. */
 const KART_FORWARD_OFFSET_QUAT = new THREE.Quaternion().setFromAxisAngle(
@@ -48,6 +51,8 @@ interface CartGameScreenProps {
   onExitToMenu: () => void;
 }
 
+const LOCAL_PLAYER_ID = 'local';
+
 export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { selectedCharacter } = useApp();
@@ -55,6 +60,22 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mobileInputRef = useRef({ steer: 0, throttle: 0, brake: 0 });
+
+  // Race state (multiplayer-ready: phase, timer; UI reads from these)
+  const [racePhase, setRacePhase] = useState<'intro' | 'countdown' | 'racing' | 'finished'>('intro');
+  const [displayTime, setDisplayTime] = useState(0);
+  const [finishedTime, setFinishedTime] = useState<number | null>(null);
+  const [introProgress, setIntroProgress] = useState(0);
+  const [goVisible, setGoVisible] = useState(false);
+  const raceStateRef = useRef(createInitialRaceState(LOCAL_PLAYER_ID));
+  const introStartTimeRef = useRef<number | null>(null);
+  const finishedAtRef = useRef<number | null>(null);
+  const introOrbitCenterRef = useRef(new THREE.Vector3());
+  const introOrbitRadiusHRef = useRef(0);
+  const introLookAtStartRef = useRef(new THREE.Vector3());
+  const introLookAtEndRef = useRef(new THREE.Vector3());
+  const _introLookAtRef = useRef(new THREE.Vector3());
+  const _introPosRef = useRef(new THREE.Vector3());
 
   // Camera orbit: spherical around kart. yaw = horizontal, pitch = elevation (0 = horizontal).
   const CAM_DISTANCE = 6;
@@ -103,7 +124,14 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         world.timestep = 1 / 60;
 
         const vehicle = new VehicleController(world);
-        vehicle.addGround();
+        addTrackColliders(world);
+
+        const chassis = vehicle.getChassisBody();
+        chassis.setTranslation(
+          { x: KART_START_POSITION.x, y: KART_START_POSITION.y, z: KART_START_POSITION.z },
+          true,
+        );
+        chassis.setRotation(KART_START_ROTATION, true);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -131,12 +159,17 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         key.shadow.mapSize.set(1024, 1024);
         key.shadow.camera.near = 0.5;
         key.shadow.camera.far = 200;
-        key.shadow.camera.left = key.shadow.camera.bottom = -60;
-        key.shadow.camera.right = key.shadow.camera.top = 60;
+        const trackCenterZ = (RACE_CONFIG.START_LINE_Z + RACE_CONFIG.FINISH_LINE_Z) / 2;
+        key.shadow.camera.left = -RACE_CONFIG.TRACK_HALF_WIDTH - 10;
+        key.shadow.camera.right = RACE_CONFIG.TRACK_HALF_WIDTH + 10;
+        key.shadow.camera.bottom = -RACE_CONFIG.TRACK_LENGTH / 2 - 10;
+        key.shadow.camera.top = RACE_CONFIG.TRACK_LENGTH / 2 + 10;
         key.shadow.camera.updateProjectionMatrix();
         scene.add(key);
 
-        const groundGeo = new THREE.PlaneGeometry(100, 100);
+        const groundW = RACE_CONFIG.TRACK_HALF_WIDTH * 2 + 8;
+        const groundL = RACE_CONFIG.TRACK_LENGTH + 8;
+        const groundGeo = new THREE.PlaneGeometry(groundW, groundL);
         const groundTexture = createGroundGridTexture();
         const groundMat = new THREE.MeshStandardMaterial({
           color: 0x2d5a3d,
@@ -146,8 +179,11 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.position.set(0, 0, trackCenterZ);
         groundMesh.receiveShadow = true;
         scene.add(groundMesh);
+
+        addTrackMeshes(scene);
 
         const kartGroup = new THREE.Group();
         scene.add(kartGroup);
@@ -186,7 +222,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
   }, [selectedCharacter?.headGroup]);
 
   useEffect(() => {
-    if (!ready || paused || !gameRef.current) return;
+    if (!ready || !gameRef.current) return;
 
     const g = gameRef.current;
     let lastTime = performance.now() / 1000;
@@ -197,24 +233,108 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
       const dt = Math.min(now - lastTime, 0.1);
       lastTime = now;
 
-      const mi = mobileInputRef.current;
-      g.input.setMobileInput(mi.steer, mi.throttle, mi.brake);
-      const { throttle, brake, steer } = g.input.getInput(dt);
       const chassis = g.vehicle.getChassisBody();
-      if (throttle > 0 || brake > 0) chassis.wakeUp();
-      g.vehicle.applyInput(throttle, brake, steer);
+      const t = chassis.translation();
+      const phase = raceStateRef.current.phase;
+
+      // ----- Intro: camera orbits around character (front → side → back), stays on character then looks ahead -----
+      if (phase === 'intro') {
+        const orbitRadiusH = CAM_RADIUS * Math.cos(defaultPitch);
+        const orbitHeight = CAM_RADIUS * Math.sin(defaultPitch);
+        if (introStartTimeRef.current == null) {
+          introStartTimeRef.current = now;
+          g.vehicle.syncToObject3D(g.kartGroup);
+          g.kartGroup.position.y -= CONFIG.KART.GROUND_OFFSET_Y;
+          g.kartGroup.quaternion.multiply(KART_FORWARD_OFFSET_QUAT);
+          g.kartGroup.updateMatrixWorld(true);
+          const head = g.kartGroup.getObjectByName('driverHead');
+          if (head) head.getWorldPosition(introLookAtStartRef.current);
+          else introLookAtStartRef.current.set(t.x, t.y + 1, t.z);
+          introOrbitCenterRef.current.set(t.x, t.y + orbitHeight, t.z);
+          introOrbitRadiusHRef.current = orbitRadiusH;
+          introLookAtEndRef.current.set(t.x, t.y + 1, t.z + 15);
+        }
+        const elapsed = now - (introStartTimeRef.current ?? now);
+        const progress = Math.min(1, elapsed / RACE_CONFIG.INTRO_DURATION);
+        setIntroProgress(progress);
+        const center = introOrbitCenterRef.current;
+        const r = introOrbitRadiusHRef.current;
+        // Start in front of kart (angle = PI/2), orbit around to behind (angle = -PI/2). Hold in front briefly then rotate.
+        const INTRO_HOLD = 1.2;
+        const orbitDuration = Math.max(0, RACE_CONFIG.INTRO_DURATION - INTRO_HOLD);
+        const orbitProgress = orbitDuration > 0 ? Math.min(1, (elapsed - INTRO_HOLD) / orbitDuration) : 0;
+        const angle = Math.PI / 2 - orbitProgress * Math.PI;
+        _introPosRef.current.set(
+          center.x + r * Math.cos(angle),
+          center.y,
+          center.z + r * Math.sin(angle),
+        );
+        g.camera.position.copy(_introPosRef.current);
+        // Look at character during hold; during orbit, keep at character for first half then blend to ahead.
+        const lookAtProgress =
+          elapsed < INTRO_HOLD ? 0 : orbitProgress <= 0.5 ? 0 : (orbitProgress - 0.5) * 2;
+        _introLookAtRef.current
+          .copy(introLookAtStartRef.current)
+          .lerp(introLookAtEndRef.current, lookAtProgress);
+        g.camera.lookAt(_introLookAtRef.current);
+        if (progress >= 1) {
+          raceStateRef.current.phase = 'racing';
+          raceStateRef.current.startTime = now;
+          setRacePhase('racing');
+          setGoVisible(true);
+          window.setTimeout(() => setGoVisible(false), 600);
+          cameraOrbitRef.current.yaw = 0;
+        }
+        g.vehicle.update(dt);
+        g.vehicle.getWorld().step();
+        g.vehicle.syncToObject3D(g.kartGroup);
+        g.kartGroup.position.y -= CONFIG.KART.GROUND_OFFSET_Y;
+        g.kartGroup.quaternion.multiply(KART_FORWARD_OFFSET_QUAT);
+        g.renderer.render(g.scene, g.camera);
+        return;
+      }
+
+      // ----- Racing or finished: normal physics and driving -----
+      const isRacing = phase === 'racing';
+      const isFinished = phase === 'finished';
+
+      if (isRacing && !paused) {
+        const mi = mobileInputRef.current;
+        g.input.setMobileInput(mi.steer, mi.throttle, mi.brake);
+        const { throttle, brake, steer } = g.input.getInput(dt);
+        if (throttle > 0 || brake > 0) chassis.wakeUp();
+        g.vehicle.applyInput(throttle, brake, steer);
+        raceStateRef.current.currentTime = now - (raceStateRef.current.startTime ?? now);
+        setDisplayTime(raceStateRef.current.currentTime);
+
+        if (t.z >= RACE_CONFIG.FINISH_LINE_Z) {
+          raceStateRef.current.phase = 'finished';
+          raceStateRef.current.endTime = now;
+          raceStateRef.current.currentTime = now - (raceStateRef.current.startTime ?? now);
+          setRacePhase('finished');
+          setFinishedTime(raceStateRef.current.currentTime);
+          setDisplayTime(raceStateRef.current.currentTime);
+          finishedAtRef.current = now;
+          chassis.setLinearDamping(15);
+        }
+      } else if (isRacing && paused) {
+        g.vehicle.applyInput(0, 0, 0);
+      } else if (isFinished) {
+        g.vehicle.applyInput(0, 1, 0);
+        if (finishedAtRef.current != null && now - finishedAtRef.current >= RACE_CONFIG.FINISHED_VIEW_TIME) {
+          onExitToMenu();
+          return;
+        }
+      }
+
       g.vehicle.update(dt);
       g.vehicle.getWorld().step();
       g.vehicle.syncToObject3D(g.kartGroup);
       g.kartGroup.position.y -= CONFIG.KART.GROUND_OFFSET_Y;
       g.kartGroup.quaternion.multiply(KART_FORWARD_OFFSET_QUAT);
 
-      const t = chassis.translation();
       const orbit = cameraOrbitRef.current;
       const pointerDown = pointerRef.current.isDown;
-      // When not dragging, smoothly rotate camera behind the kart (Mario Kart style).
-      // Camera offset is (sin(yaw), 0, -cos(yaw)). Kart drives toward +Z in world; behind = -Z, so we need yaw=0.
-      // Chassis back in chassis space = +Z; we want camera offset = -back so targetYaw = atan2(-back.x, back.z).
       if (!pointerDown) {
         const r = chassis.rotation();
         _chassisQuat.current.set(r.x, r.y, r.z, r.w);
@@ -240,7 +360,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
 
     loop();
     return () => cancelAnimationFrame(g.animationId);
-  }, [ready, paused]);
+  }, [ready, paused, onExitToMenu]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -320,19 +440,61 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
     );
   }
 
+  const showCountdown = ready && racePhase === 'intro';
+  const showTimer = ready && racePhase === 'racing';
+  const showFinishedTime = racePhase === 'finished' && finishedTime != null;
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = (seconds % 60).toFixed(2);
+    return `${m}:${s.padStart(5, '0')}`;
+  };
+
   return (
     <div className="cart-game-screen">
       <div ref={containerRef} className="cart-game-canvas" />
       {!ready && <div className="cart-game-loading">Loading…</div>}
-      <button
-        type="button"
-        className="cart-game-pause-btn"
-        aria-label="Pause"
-        onClick={() => setPaused((p) => !p)}
-      >
-        II
-      </button>
-      {ready && (
+      {showCountdown && (
+        <div className="cart-game-countdown" aria-live="polite">
+          <div className="cart-game-countdown-lights">
+            <span className={`cart-game-light cart-game-light--red ${introProgress >= 0.25 ? 'cart-game-light--on' : ''}`} />
+            <span className={`cart-game-light cart-game-light--red ${introProgress >= 0.5 ? 'cart-game-light--on' : ''}`} />
+            <span className={`cart-game-light cart-game-light--red ${introProgress >= 0.75 ? 'cart-game-light--on' : ''}`} />
+            <span className={`cart-game-light cart-game-light--green ${introProgress >= 1 ? 'cart-game-light--on' : ''}`} />
+          </div>
+        </div>
+      )}
+      {goVisible && (
+        <div className="cart-game-go-overlay" aria-live="polite">
+          <span className="cart-game-go-text">GO</span>
+        </div>
+      )}
+      {showTimer && !showFinishedTime && (
+        <div className="cart-game-race-hud">
+          <div className="cart-game-timer" aria-live="polite">
+            {formatTime(displayTime)}
+          </div>
+          <div className="cart-game-track-hint" aria-hidden>
+            Drive to the checkered finish line.
+          </div>
+        </div>
+      )}
+      {showFinishedTime && (
+        <div className="cart-game-finished-overlay" aria-live="polite">
+          <div className="cart-game-finished-time">Time: {formatTime(finishedTime)}</div>
+        </div>
+      )}
+      {ready && racePhase !== 'intro' && (
+        <button
+          type="button"
+          className="cart-game-pause-btn"
+          aria-label="Pause"
+          onClick={() => setPaused((p) => !p)}
+        >
+          II
+        </button>
+      )}
+      {ready && racePhase === 'racing' && (
         <div className="cart-game-mobile-controls" aria-hidden>
           <div className="cart-game-mobile-steer">
             <button
@@ -392,6 +554,13 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         <div className="cart-game-pause-overlay" role="dialog" aria-label="Paused">
           <div className="cart-game-pause-menu">
             <h2>Paused</h2>
+            <button
+              type="button"
+              className="cart-game-menu-btn cart-game-menu-btn--primary"
+              onClick={() => setPaused(false)}
+            >
+              Resume
+            </button>
             <button type="button" className="cart-game-menu-btn" onClick={handleExit}>
               Exit to main menu
             </button>

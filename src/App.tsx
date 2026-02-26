@@ -259,12 +259,14 @@ export function App() {
     setScreen('home');
   }, [setSelectedGameId]);
 
-  if (screen === 'cartGame') {
-    return <CartGameScreen onExitToMenu={handleExitToMenu} />;
-  }
-
   return (
-    <div className="app-shell">
+    <>
+      {screen === 'cartGame' && <CartGameScreen onExitToMenu={handleExitToMenu} />}
+      <div
+        className="app-shell"
+        style={{ display: screen === 'cartGame' ? 'none' : undefined }}
+        aria-hidden={screen === 'cartGame'}
+      >
       {isDev && (
         <div className="debug-mode-toggle" role="group" aria-label="Debug mode">
           <label className="debug-mode-label">
@@ -489,5 +491,6 @@ export function App() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -5,11 +5,19 @@ import { RACE_CONFIG } from './types';
 /** Linear track: long in Z, narrow in X. Dimensions from RACE_CONFIG. */
 const TRACK_LENGTH = RACE_CONFIG.TRACK_LENGTH;
 const TRACK_HALF_WIDTH = RACE_CONFIG.TRACK_HALF_WIDTH;
+const ROOM_BEFORE = RACE_CONFIG.ROOM_BEFORE_START;
+const ROOM_AFTER = RACE_CONFIG.ROOM_AFTER_FINISH;
 const WALL_HEIGHT = 16;
 const WALL_THICKNESS = 4;
-/** Center Z of track (start at START_LINE_Z, finish at FINISH_LINE_Z). */
+/** Ground extends before start and after finish (grass runways). */
+const GROUND_START_Z = RACE_CONFIG.START_LINE_Z - ROOM_BEFORE;
+const GROUND_END_Z = RACE_CONFIG.FINISH_LINE_Z + ROOM_AFTER;
+const GROUND_LENGTH = GROUND_END_Z - GROUND_START_Z;
+/** Center Z of race track (start/finish lines). */
 const TRACK_CENTER_Z = (RACE_CONFIG.START_LINE_Z + RACE_CONFIG.FINISH_LINE_Z) / 2;
-const HALF_LENGTH = TRACK_LENGTH / 2;
+/** Center Z of full ground (including runways). */
+const GROUND_CENTER_Z = (GROUND_START_Z + GROUND_END_Z) / 2;
+const HALF_GROUND_LENGTH = GROUND_LENGTH / 2;
 
 /** Creates a texture for the track: dark asphalt with a dashed yellow center line along the strip. */
 function createTrackTexture(): THREE.CanvasTexture {
@@ -68,25 +76,24 @@ function createCheckeredTexture(): THREE.CanvasTexture {
  */
 export function addTrackColliders(world: RAPIER.World): void {
   const halfW = TRACK_HALF_WIDTH + WALL_THICKNESS;
-  const halfL = HALF_LENGTH + WALL_THICKNESS;
+  const halfL = HALF_GROUND_LENGTH + WALL_THICKNESS;
+  const halfWallH = WALL_HEIGHT / 2;
+  const halfThick = WALL_THICKNESS / 2;
 
-  // Ground: long rectangle under the track
+  // Ground: long rectangle including grass before start and after finish
   const groundDesc = RAPIER.ColliderDesc.cuboid(
     TRACK_HALF_WIDTH,
     0.1,
-    HALF_LENGTH,
-  ).setTranslation(0, -0.1, TRACK_CENTER_Z);
+    HALF_GROUND_LENGTH,
+  ).setTranslation(0, -0.1, GROUND_CENTER_Z);
   world.createCollider(groundDesc);
-
-  const halfWallH = WALL_HEIGHT / 2;
-  const halfThick = WALL_THICKNESS / 2;
 
   // West wall (x = -TRACK_HALF_WIDTH)
   world.createCollider(
     RAPIER.ColliderDesc.cuboid(halfThick, halfWallH, halfL).setTranslation(
       -TRACK_HALF_WIDTH - halfThick,
       halfWallH,
-      TRACK_CENTER_Z,
+      GROUND_CENTER_Z,
     ),
   );
   // East wall (x = +TRACK_HALF_WIDTH)
@@ -94,23 +101,23 @@ export function addTrackColliders(world: RAPIER.World): void {
     RAPIER.ColliderDesc.cuboid(halfThick, halfWallH, halfL).setTranslation(
       TRACK_HALF_WIDTH + halfThick,
       halfWallH,
-      TRACK_CENTER_Z,
+      GROUND_CENTER_Z,
     ),
   );
-  // Start wall (z = START_LINE_Z)
+  // Start wall: at end of grass before start line
   world.createCollider(
     RAPIER.ColliderDesc.cuboid(halfW, halfWallH, halfThick).setTranslation(
       0,
       halfWallH,
-      RACE_CONFIG.START_LINE_Z - halfThick,
+      GROUND_START_Z - halfThick,
     ),
   );
-  // Finish wall (z = FINISH_LINE_Z) — drive through finish then hit wall slightly past
+  // Finish wall: past the grass after finish line so player can cross the line
   world.createCollider(
     RAPIER.ColliderDesc.cuboid(halfW, halfWallH, halfThick).setTranslation(
       0,
       halfWallH,
-      RACE_CONFIG.FINISH_LINE_Z + halfThick,
+      GROUND_END_Z + halfThick,
     ),
   );
 }
@@ -157,12 +164,12 @@ export function addTrackMeshes(scene: THREE.Scene): void {
   };
 
   const wallW = TRACK_HALF_WIDTH * 2 + WALL_THICKNESS;
-  const wallL = TRACK_LENGTH + WALL_THICKNESS;
+  const wallL = GROUND_LENGTH + WALL_THICKNESS;
 
-  scene.add(createWall(WALL_THICKNESS, WALL_HEIGHT, wallL, -TRACK_HALF_WIDTH - WALL_THICKNESS / 2, TRACK_CENTER_Z));
-  scene.add(createWall(WALL_THICKNESS, WALL_HEIGHT, wallL, TRACK_HALF_WIDTH + WALL_THICKNESS / 2, TRACK_CENTER_Z));
-  scene.add(createWall(wallW, WALL_HEIGHT, WALL_THICKNESS, 0, RACE_CONFIG.START_LINE_Z - WALL_THICKNESS / 2));
-  scene.add(createWall(wallW, WALL_HEIGHT, WALL_THICKNESS, 0, RACE_CONFIG.FINISH_LINE_Z + WALL_THICKNESS / 2));
+  scene.add(createWall(WALL_THICKNESS, WALL_HEIGHT, wallL, -TRACK_HALF_WIDTH - WALL_THICKNESS / 2, GROUND_CENTER_Z));
+  scene.add(createWall(WALL_THICKNESS, WALL_HEIGHT, wallL, TRACK_HALF_WIDTH + WALL_THICKNESS / 2, GROUND_CENTER_Z));
+  scene.add(createWall(wallW, WALL_HEIGHT, WALL_THICKNESS, 0, GROUND_START_Z - WALL_THICKNESS / 2));
+  scene.add(createWall(wallW, WALL_HEIGHT, WALL_THICKNESS, 0, GROUND_END_Z + WALL_THICKNESS / 2));
 
   // Start line: checkered strip across the track
   const lineStripGeo = new THREE.PlaneGeometry(TRACK_HALF_WIDTH * 2, 4);

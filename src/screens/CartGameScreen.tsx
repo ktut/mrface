@@ -159,16 +159,17 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         key.shadow.mapSize.set(1024, 1024);
         key.shadow.camera.near = 0.5;
         key.shadow.camera.far = 200;
-        const trackCenterZ = (RACE_CONFIG.START_LINE_Z + RACE_CONFIG.FINISH_LINE_Z) / 2;
+        const groundLength = RACE_CONFIG.TRACK_LENGTH + RACE_CONFIG.ROOM_BEFORE_START + RACE_CONFIG.ROOM_AFTER_FINISH;
+        const groundCenterZ = (RACE_CONFIG.START_LINE_Z - RACE_CONFIG.ROOM_BEFORE_START + RACE_CONFIG.FINISH_LINE_Z + RACE_CONFIG.ROOM_AFTER_FINISH) / 2;
         key.shadow.camera.left = -RACE_CONFIG.TRACK_HALF_WIDTH - 10;
         key.shadow.camera.right = RACE_CONFIG.TRACK_HALF_WIDTH + 10;
-        key.shadow.camera.bottom = -RACE_CONFIG.TRACK_LENGTH / 2 - 10;
-        key.shadow.camera.top = RACE_CONFIG.TRACK_LENGTH / 2 + 10;
+        key.shadow.camera.bottom = -groundLength / 2 - 10;
+        key.shadow.camera.top = groundLength / 2 + 10;
         key.shadow.camera.updateProjectionMatrix();
         scene.add(key);
 
         const groundW = RACE_CONFIG.TRACK_HALF_WIDTH * 2 + 8;
-        const groundL = RACE_CONFIG.TRACK_LENGTH + 8;
+        const groundL = groundLength + 8;
         const groundGeo = new THREE.PlaneGeometry(groundW, groundL);
         const groundTexture = createGroundGridTexture();
         const groundMat = new THREE.MeshStandardMaterial({
@@ -179,7 +180,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         });
         const groundMesh = new THREE.Mesh(groundGeo, groundMat);
         groundMesh.rotation.x = -Math.PI / 2;
-        groundMesh.position.set(0, 0, trackCenterZ);
+        groundMesh.position.set(0, 0, groundCenterZ);
         groundMesh.receiveShadow = true;
         scene.add(groundMesh);
 

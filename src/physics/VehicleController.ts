@@ -10,6 +10,8 @@ const SUSPENSION_DAMPING_RELAXATION = 4.4;
 const MAX_ENGINE_FORCE = 18;
 const MAX_BRAKE = 30;
 const MAX_STEER_RAD = Math.PI / 6;
+/** Linear damping so the kart slows to a stop when gas is not held. */
+const LINEAR_DAMPING = 2.5;
 
 export class VehicleController {
   private world: RAPIER.World;
@@ -22,6 +24,7 @@ export class VehicleController {
       // Only allow rotation around Y (steering); prevent roll/pitch so gas doesn't spin the kart.
       .enabledRotations(false, true, false);
     this.chassisBody = world.createRigidBody(chassisDesc);
+    this.chassisBody.setLinearDamping(LINEAR_DAMPING);
     const colliderDesc = RAPIER.ColliderDesc.cuboid(
       CHASSIS_HALF_EXTENTS.x,
       CHASSIS_HALF_EXTENTS.y,

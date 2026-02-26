@@ -73,6 +73,8 @@ export const CONFIG = {
       NEAR: 0.01,
       FAR: 100,
       INITIAL_POSITION: [0, 0, 2.5] as [number, number, number],
+      /** Look-at target [x, y, z]. Slightly below origin so the character appears higher in the viewport. */
+      TARGET: [0, -0.22, 0] as [number, number, number],
     },
     CONTROLS: {
       DAMPING_FACTOR: 0.05,
@@ -106,6 +108,8 @@ export const CONFIG = {
     /** Rotation (radians) applied so kart sits on wheels: often OBJ is Z-up, so rotateX(-π/2) gives Y-up. */
     ROTATION_X: -Math.PI / 2,
     ROTATION_Z: 0,
+    /** Chassis center height when at rest on ground (wheel contact at y=0). Kart mesh is built with its bottom at origin, so we subtract this from synced Y so the visual sits on the ground. */
+    GROUND_OFFSET_Y: 0.62,
     /** Kart mesh material (applied to loaded OBJ). */
     MATERIAL: {
       COLOR: 0x2a2a2a,

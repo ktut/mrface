@@ -50,7 +50,7 @@ export class SceneManager {
     this.controls.dampingFactor   = CONFIG.SCENE.CONTROLS.DAMPING_FACTOR;
     this.controls.minDistance     = CONFIG.SCENE.CONTROLS.MIN_DISTANCE;
     this.controls.maxDistance     = CONFIG.SCENE.CONTROLS.MAX_DISTANCE;
-    this.controls.target.set(0, 0, 0);
+    this.controls.target.set(...CONFIG.SCENE.CAMERA.TARGET);
 
     // ── Lights ────────────────────────────────────────────────────────────────
     this.setupLights();
@@ -180,7 +180,7 @@ export class SceneManager {
       this.currentHead = null;
       this.addPlaceholder();
     }
-    this.controls.target.set(0, 0, 0);
+    this.controls.target.set(...CONFIG.SCENE.CAMERA.TARGET);
   }
 
   // ── Render loop ─────────────────────────────────────────────────────────────

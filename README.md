@@ -61,7 +61,8 @@ Open `http://localhost:5173`.
 
 ### Test Photo
 
-Place test portraits in `public/test/` (e.g. `test-face.png`, `test-face-adult.png`). Contents of `public/test/` are excluded from the production build.
+Test portraits are in `src/assets/test/` (e.g. `test-face.png`, `test-face-adult.png`). They are bundled with the app so the same images work in development and production. Replace these with real face photos for a default face on load; the repo includes minimal placeholders so the app loads without 404.
+
 The photo works best when:
 - Face is roughly centred and fills most of the frame
 - Good even lighting, no strong shadows

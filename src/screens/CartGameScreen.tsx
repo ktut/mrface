@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { VehicleController } from '../physics/VehicleController';
 import { InputManager } from '../engine/InputManager';
 import { buildKartCharacter } from '../character/KartCharacter';
+import { CONFIG } from '../config';
 
 /** Offset so kart visual (nose along +X in chassis space) faces +Z (away from camera). Applied after chassis sync. */
 const KART_FORWARD_OFFSET_QUAT = new THREE.Quaternion().setFromAxisAngle(
@@ -194,6 +195,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
       g.vehicle.update(dt);
       g.vehicle.getWorld().step();
       g.vehicle.syncToObject3D(g.kartGroup);
+      g.kartGroup.position.y -= CONFIG.KART.GROUND_OFFSET_Y;
       g.kartGroup.quaternion.multiply(KART_FORWARD_OFFSET_QUAT);
 
       const chassis = g.vehicle.getChassisBody();
@@ -311,48 +313,52 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
             <button
               type="button"
               className="cart-game-mobile-btn"
+              aria-label="Steer left"
               onTouchStart={() => (mobileInputRef.current.steer = -1)}
               onTouchEnd={() => (mobileInputRef.current.steer = 0)}
               onMouseDown={() => (mobileInputRef.current.steer = -1)}
               onMouseUp={() => (mobileInputRef.current.steer = 0)}
               onMouseLeave={() => (mobileInputRef.current.steer = 0)}
             >
-              ←
+              <span aria-hidden>←</span>
             </button>
             <button
               type="button"
               className="cart-game-mobile-btn"
+              aria-label="Steer right"
               onTouchStart={() => (mobileInputRef.current.steer = 1)}
               onTouchEnd={() => (mobileInputRef.current.steer = 0)}
               onMouseDown={() => (mobileInputRef.current.steer = 1)}
               onMouseUp={() => (mobileInputRef.current.steer = 0)}
               onMouseLeave={() => (mobileInputRef.current.steer = 0)}
             >
-              →
+              <span aria-hidden>→</span>
             </button>
           </div>
           <div className="cart-game-mobile-drive">
             <button
               type="button"
-              className="cart-game-mobile-btn cart-game-mobile-gas"
-              onTouchStart={() => (mobileInputRef.current.throttle = 1)}
-              onTouchEnd={() => (mobileInputRef.current.throttle = 0)}
-              onMouseDown={() => (mobileInputRef.current.throttle = 1)}
-              onMouseUp={() => (mobileInputRef.current.throttle = 0)}
-              onMouseLeave={() => (mobileInputRef.current.throttle = 0)}
-            >
-              Gas
-            </button>
-            <button
-              type="button"
               className="cart-game-mobile-btn cart-game-mobile-brake"
+              aria-label="Brake"
               onTouchStart={() => (mobileInputRef.current.brake = 1)}
               onTouchEnd={() => (mobileInputRef.current.brake = 0)}
               onMouseDown={() => (mobileInputRef.current.brake = 1)}
               onMouseUp={() => (mobileInputRef.current.brake = 0)}
               onMouseLeave={() => (mobileInputRef.current.brake = 0)}
             >
-              Brake
+              <span aria-hidden>■</span>
+            </button>
+            <button
+              type="button"
+              className="cart-game-mobile-btn cart-game-mobile-gas"
+              aria-label="Gas"
+              onTouchStart={() => (mobileInputRef.current.throttle = 1)}
+              onTouchEnd={() => (mobileInputRef.current.throttle = 0)}
+              onMouseDown={() => (mobileInputRef.current.throttle = 1)}
+              onMouseUp={() => (mobileInputRef.current.throttle = 0)}
+              onMouseLeave={() => (mobileInputRef.current.throttle = 0)}
+            >
+              <span aria-hidden>▲</span>
             </button>
           </div>
         </div>

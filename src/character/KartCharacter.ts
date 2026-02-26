@@ -26,7 +26,9 @@ export async function buildKartCharacter(headGroup: THREE.Group): Promise<THREE.
   const maxDim = Math.max(size.x, size.y, size.z) || 1;
   const scale = (2 * 0.6) / maxDim;
   kartObj.scale.setScalar(scale * (CONFIG.KART.SCALE ?? 1));
-  kartObj.position.set(0, 0, 0);
+  // Recompute bbox after scale so wheel bottom is at root origin (y=0) for ground alignment
+  const boxAfterScale = new THREE.Box3().setFromObject(kartObj);
+  kartObj.position.set(0, -boxAfterScale.min.y, 0);
   const kartMat = new THREE.MeshStandardMaterial({
     color: CONFIG.KART.MATERIAL.COLOR,
     roughness: CONFIG.KART.MATERIAL.ROUGHNESS,

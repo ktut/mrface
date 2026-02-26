@@ -8,6 +8,11 @@ import { SwipeableStrip } from './components/SwipeableStrip';
 import { CartGameScreen } from './screens/CartGameScreen';
 import { GameSelectPreview } from './components/GameSelectPreview';
 
+import testFaceAdultUrl from './assets/test/test-face-adult.png';
+
+/** Default face image on load: served from public/test-face.png (dev and prod). */
+const DEFAULT_TEST_FACE_URL = '/test-face.png';
+
 const HELMET_SATURATION = 0.35;
 const HELMET_LIGHTNESS_MIN = 0.38;
 const HELMET_LIGHTNESS_MAX = 0.62;
@@ -156,15 +161,10 @@ export function App() {
         setProgress(40);
         setUploadDisabled(false);
         try {
-          const img = await loadImage('/test/test-face.png');
+          const img = await loadImage(DEFAULT_TEST_FACE_URL);
           await processImage(img, true);
         } catch {
-          try {
-            const imgAdult = await loadImage('/test/test-face-adult.png');
-            await processImage(imgAdult, true);
-          } catch {
-            setProgress(100);
-          }
+          setProgress(100);
         }
       } catch (err) {
         console.error('[init]', err);
@@ -305,37 +305,45 @@ export function App() {
         <div className="ui-overlay">
           {screen === 'home' && (
             <>
-              <div className="helmet-hue-control" role="group" aria-label="Helmet hue">
-                <input
-                  id="helmet-hue-slider"
-                  type="range"
-                  min={0}
-                  max={360}
-                  value={helmetHue}
-                  onChange={(e) => setHelmetHueAndApply(Number(e.target.value))}
-                  className="helmet-hue-slider"
-                  style={{ '--thumb-hue': helmetHue } as React.CSSProperties}
-                  aria-valuemin={0}
-                  aria-valuemax={360}
-                  aria-valuenow={helmetHue}
-                />
+              <div className="upload-hue-row">
+                <div className="helmet-hue-control" role="group" aria-label="Helmet hue">
+                  <input
+                    id="helmet-hue-slider"
+                    type="range"
+                    min={0}
+                    max={360}
+                    value={helmetHue}
+                    onChange={(e) => setHelmetHueAndApply(Number(e.target.value))}
+                    className="helmet-hue-slider"
+                    style={{ '--thumb-hue': helmetHue } as React.CSSProperties}
+                    aria-valuemin={0}
+                    aria-valuemax={360}
+                    aria-valuenow={helmetHue}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="upload-btn"
+                  onClick={handleUploadClick}
+                  disabled={uploadDisabled}
+                  aria-label="Upload face"
+                >
+                  <span className="upload-btn-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </span>
+                  <span className="upload-btn-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <path d="M21 15l-5-5L5 21" />
+                    </svg>
+                  </span>
+                </button>
               </div>
-              <button
-                type="button"
-                className="upload-btn"
-                onClick={handleUploadClick}
-                disabled={uploadDisabled}
-                aria-label="Upload face"
-              >
-                <span className="upload-btn-icon" aria-hidden>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                  </svg>
-                </span>
-                Upload Face
-              </button>
               {debugMode && (
                 <div className="test-image-buttons" role="group" aria-label="Load test image">
                   <button
@@ -344,7 +352,7 @@ export function App() {
                     onClick={async () => {
                       if (uploadDisabled) return;
                       try {
-                        const img = await loadImage('/test/test-face.png');
+                        const img = await loadImage(DEFAULT_TEST_FACE_URL);
                         await processImage(img, characters.length === 0);
                       } catch {
                         // ignore
@@ -360,7 +368,7 @@ export function App() {
                     onClick={async () => {
                       if (uploadDisabled) return;
                       try {
-                        const img = await loadImage('/test/test-face-adult.png');
+                        const img = await loadImage(testFaceAdultUrl);
                         await processImage(img, characters.length === 0);
                       } catch {
                         // ignore

@@ -129,7 +129,7 @@ body {
   --thumb-hue: 220;
   --thumb-size: 2.25rem;
   --rail-height: 0.5rem;
-  width: min(200px, 40vw);
+  width: min(160px, 32vw);
   height: var(--thumb-size);
   cursor: pointer;
   background: transparent;
@@ -140,17 +140,18 @@ body {
   padding: 0;
   margin: 0;
 
-  /* Track same height as thumb so browser aligns them; rail drawn as thin strip in center */
+  /* Rainbow track: hue 0 (red) → 360 (red) left to right */
   &::-webkit-slider-runnable-track {
     height: var(--thumb-size);
     background: linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(50% - var(--rail-height) / 2),
-      v.$color-border calc(50% - var(--rail-height) / 2),
-      v.$color-border calc(50% + var(--rail-height) / 2),
-      transparent calc(50% + var(--rail-height) / 2),
-      transparent 100%
+      to right,
+      hsl(0, 100%, 50%),
+      hsl(60, 100%, 50%),
+      hsl(120, 100%, 50%),
+      hsl(180, 100%, 50%),
+      hsl(240, 100%, 50%),
+      hsl(300, 100%, 50%),
+      hsl(360, 100%, 50%)
     );
     border-radius: v.$radius-pill;
   }
@@ -171,13 +172,14 @@ body {
   &::-moz-range-track {
     height: var(--thumb-size);
     background: linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(50% - var(--rail-height) / 2),
-      v.$color-border calc(50% - var(--rail-height) / 2),
-      v.$color-border calc(50% + var(--rail-height) / 2),
-      transparent calc(50% + var(--rail-height) / 2),
-      transparent 100%
+      to right,
+      hsl(0, 100%, 50%),
+      hsl(60, 100%, 50%),
+      hsl(120, 100%, 50%),
+      hsl(180, 100%, 50%),
+      hsl(240, 100%, 50%),
+      hsl(300, 100%, 50%),
+      hsl(360, 100%, 50%)
     );
     border-radius: v.$radius-pill;
   }
@@ -304,7 +306,7 @@ body {
 
 .ui-overlay {
   position: absolute;
-  bottom: v.$space-xl;
+  bottom: v.$space-md;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -314,18 +316,23 @@ body {
   z-index: v.$z-overlay;
 }
 
+.upload-hue-row {
+  display: flex;
+  align-items: center;
+  gap: v.$space-sm;
+}
+
 .upload-btn {
   display: inline-flex;
   align-items: center;
-  gap: v.$space-sm;
-  padding: v.$space-sm v.$space-xl;
+  justify-content: center;
+  gap: v.$space-xs;
+  padding: v.$space-sm v.$space-md;
   background: v.$color-primary;
   border: none;
   border-radius: v.$radius-pill;
   color: v.$color-text;
   font-family: inherit;
-  font-size: v.$font-size-base;
-  font-weight: v.$font-weight-semibold;
   cursor: pointer;
   transition: transform v.$transition-fast, background v.$transition-base,
     opacity v.$transition-base;
@@ -634,22 +641,27 @@ body {
 }
 
 .cart-game-mobile-drive {
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .cart-game-mobile-btn {
-  padding: v.$space-md v.$space-lg;
-  min-width: 3.5rem;
-  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.25rem;
+  height: 4.25rem;
+  padding: 0;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: v.$radius-sm;
+  border-radius: 50%;
   color: v.$color-text;
   font-family: inherit;
-  font-size: v.$font-size-sm;
+  font-size: 1.5rem;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 
   &:active {
     background: rgba(0, 0, 0, 0.7);
@@ -660,6 +672,9 @@ body {
   }
 
   &.cart-game-mobile-brake {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1rem;
     background: rgba(120, 0, 0, 0.4);
   }
 }

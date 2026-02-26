@@ -3,9 +3,9 @@ import * as THREE from 'three';
 
 const CHASSIS_HALF_EXTENTS = { x: 0.6, y: 0.25, z: 0.4 };
 const WHEEL_RADIUS = 0.22;
-/** Rest length so suspension ray reaches ground: chassis y=1, connection ~0.65 below, ground y=0 → need ≥0.65. */
-const WHEEL_REST_LENGTH = 0.65;
-const SUSPENSION_STIFFNESS = 50;
+/** Minimal rest length so kart sits on ground; connectionY = -0.36, ray 0.52 reaches ground. */
+const WHEEL_REST_LENGTH = 0.22;
+const SUSPENSION_STIFFNESS = 16;
 const SUSPENSION_DAMPING_COMPRESSION = 2.3;
 const SUSPENSION_DAMPING_RELAXATION = 4.4;
 const MAX_ENGINE_FORCE = 18;
@@ -20,8 +20,8 @@ export class VehicleController {
   private chassisBody: RAPIER.RigidBody;
   constructor(world: RAPIER.World) {
     this.world = world;
-    // Chassis low enough that wheel rays (rest 0.65 + travel 0.3) reach ground at y=0 from connection ~0.43.
-    const CHASSIS_INITIAL_Y = 0.7;
+    // Chassis low; connectionY = -0.36, ray 0.52 reaches ground from connection y ≥ 0.02.
+    const CHASSIS_INITIAL_Y = 0.38;
     const chassisDesc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(0, CHASSIS_INITIAL_Y, 0)
       // Only allow rotation around Y (steering); prevent roll/pitch so gas doesn't spin the kart.
@@ -80,7 +80,7 @@ export class VehicleController {
       this.vehicle.setWheelSuspensionCompression(i, SUSPENSION_DAMPING_COMPRESSION);
       this.vehicle.setWheelSuspensionRelaxation(i, SUSPENSION_DAMPING_RELAXATION);
       this.vehicle.setWheelMaxSuspensionTravel(i, 0.3);
-      this.vehicle.setWheelMaxSuspensionForce(i, 1e6);
+      this.vehicle.setWheelMaxSuspensionForce(i, 8000);
       this.vehicle.setWheelFrictionSlip(i, 1.5);
       this.vehicle.setWheelSideFrictionStiffness(i, 1);
     }

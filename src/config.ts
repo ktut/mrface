@@ -109,7 +109,7 @@ export const CONFIG = {
     ROTATION_X: -Math.PI / 2,
     ROTATION_Z: 0,
     /** Chassis center height when at rest on ground (wheel contact at y=0). Kart mesh is built with its bottom at origin, so we subtract this from synced Y so the visual sits on the ground. */
-    GROUND_OFFSET_Y: 0.62,
+    GROUND_OFFSET_Y: 0.43,
     /** Kart mesh material (applied to loaded OBJ). */
     MATERIAL: {
       COLOR: 0x2a2a2a,

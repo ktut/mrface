@@ -200,6 +200,8 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
       const mi = mobileInputRef.current;
       g.input.setMobileInput(mi.steer, mi.throttle, mi.brake);
       const { throttle, brake, steer } = g.input.getInput(dt);
+      const chassis = g.vehicle.getChassisBody();
+      if (throttle > 0 || brake > 0) chassis.wakeUp();
       g.vehicle.applyInput(throttle, brake, steer);
       g.vehicle.update(dt);
       g.vehicle.getWorld().step();
@@ -207,7 +209,6 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
       g.kartGroup.position.y -= CONFIG.KART.GROUND_OFFSET_Y;
       g.kartGroup.quaternion.multiply(KART_FORWARD_OFFSET_QUAT);
 
-      const chassis = g.vehicle.getChassisBody();
       const t = chassis.translation();
       const orbit = cameraOrbitRef.current;
       const pointerDown = pointerRef.current.isDown;

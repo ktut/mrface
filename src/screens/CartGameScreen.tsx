@@ -126,9 +126,14 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         const ambient = new THREE.AmbientLight(0xffffff, 0.4);
         scene.add(ambient);
         const key = new THREE.DirectionalLight(0xfff5e0, 1.2);
-        key.position.set(5, 10, 5);
+        key.position.set(50, 80, 50);
         key.castShadow = true;
         key.shadow.mapSize.set(1024, 1024);
+        key.shadow.camera.near = 0.5;
+        key.shadow.camera.far = 200;
+        key.shadow.camera.left = key.shadow.camera.bottom = -60;
+        key.shadow.camera.right = key.shadow.camera.top = 60;
+        key.shadow.camera.updateProjectionMatrix();
         scene.add(key);
 
         const groundGeo = new THREE.PlaneGeometry(100, 100);

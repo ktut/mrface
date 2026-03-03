@@ -132,6 +132,7 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
           { x: KART_START_POSITION.x, y: KART_START_POSITION.y, z: KART_START_POSITION.z },
           true,
         );
+        // When re-instantiating on mode switch, kart rotation must match current head rotation so they stay aligned.
         chassis.setRotation(KART_START_ROTATION, true);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });

@@ -96,6 +96,7 @@ export function WaterparkGameScreen({ onExitToMenu }: WaterparkGameScreenProps) 
 
         const tubeGroup = new THREE.Group();
         tubeGroup.position.set(TUBE_START_POSITION.x, TUBE_START_POSITION.y, TUBE_START_POSITION.z);
+        // When re-instantiating on mode switch, tube rotation must match current head rotation so they stay aligned.
         tubeGroup.quaternion.set(TUBE_START_ROTATION.x, TUBE_START_ROTATION.y, TUBE_START_ROTATION.z, TUBE_START_ROTATION.w);
         scene.add(tubeGroup);
 

@@ -15,6 +15,7 @@ export class SceneManager {
   private camera:     THREE.PerspectiveCamera;
   private controls:   OrbitControls;
   private currentHead: THREE.Object3D | null = null;
+  private characterRoot: THREE.Group;
   private homeAttachment: THREE.Group | null = null;
   private homeDriverBody: THREE.Group | null = null;
   private debugMode = false;
@@ -62,6 +63,11 @@ export class SceneManager {
 
     // ── Placeholder ───────────────────────────────────────────────────────────
     this.addPlaceholder();
+
+    // Root group for head + body + vehicle on the home screen so they rotate as one.
+    this.characterRoot = new THREE.Group();
+    this.characterRoot.name = 'homeCharacterRoot';
+    this.scene.add(this.characterRoot);
 
     // ── Resize handler ────────────────────────────────────────────────────────
     window.addEventListener('resize', () => {
@@ -175,15 +181,15 @@ export class SceneManager {
    * Pass null to clear the character and restore the placeholder.
    */
   setCharacterHead(head: THREE.Object3D | null) {
-    const existing    = this.scene.getObjectByName('characterHead');
+    const existing    = this.characterRoot.getObjectByName('characterHead');
     const placeholder = this.scene.getObjectByName('placeholder');
-    if (existing) this.scene.remove(existing);
+    if (existing) this.characterRoot.remove(existing);
     if (placeholder) this.scene.remove(placeholder);
 
     if (head) {
       if (existing) head.rotation.copy(existing.rotation);
       head.name = 'characterHead';
-      this.scene.add(head);
+      this.characterRoot.add(head);
       this.currentHead = head;
     } else {
       this.currentHead = null;
@@ -201,7 +207,7 @@ export class SceneManager {
     headGroup: THREE.Group | null,
   ): Promise<void> {
     if (this.homeAttachment) {
-      this.scene.remove(this.homeAttachment);
+      this.characterRoot.remove(this.homeAttachment);
       this.homeAttachment = null;
       this.homeDriverBody = null;
     }
@@ -255,7 +261,7 @@ export class SceneManager {
         );
         this.homeDriverBody.scale.setScalar(bodyHome.SCALE);
       }
-      this.scene.add(root);
+      this.characterRoot.add(root);
     } catch (err) {
       console.error('[SceneManager] setHomeAttachment', err);
     }
@@ -301,15 +307,10 @@ export class SceneManager {
     requestAnimationFrame(() => this.animate());
     this.controls.update();
 
-    // Idle rotation: rotate head + attachment together when not in debug mode.
-    if (!this.debugMode) {
+    // Idle rotation: rotate the combined character root so head + body + vehicle stay locked.
+    if (!this.debugMode && this.characterRoot) {
       const spin = CONFIG.SCENE.IDLE_ROTATION_SPEED;
-      if (this.currentHead) {
-        this.currentHead.rotation.y += spin;
-      }
-      if (this.homeAttachment) {
-        this.homeAttachment.rotation.y += spin;
-      }
+      this.characterRoot.rotation.y += spin;
     }
 
     this.renderer.render(this.scene, this.camera);

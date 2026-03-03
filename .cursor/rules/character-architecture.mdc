@@ -24,6 +24,10 @@ headwear.clear();
 headwear.add(newHelmetMesh);
 ```
 
+## Terminology (UI / app)
+
+In this application, **Character** means: the **head** (face mesh + back shell) plus the **head topper** (e.g. helmet). The home screen "Customize Character" controls this (dropdown, upload, helmet hue). **Game** means the body/kart/vehicle and game mode (e.g. Kart, Waterpark), selected via the game swiper.
+
 ## Persistence & Flow
 
 1. User uploads face photo → face mask built

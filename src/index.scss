@@ -1,5 +1,6 @@
 @use 'sass:string';
 @use 'styles/variables' as v;
+@use 'styles/mixins' as m;
 
 * {
   margin: 0;
@@ -8,7 +9,7 @@
 }
 
 body {
-  background: v.$color-bg;
+  background: v.$bg-gradient-main;
   color: v.$color-text;
   font-family: v.$font-family-base;
   overflow: hidden;
@@ -22,22 +23,22 @@ body {
 // Debug mode checkbox: only visible in dev (npm run dev); fixed top-left, highest z-index
 .debug-mode-toggle {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: v.$space-sm;
+  right: v.$space-sm;
   z-index: 9999;
-  padding: v.$space-sm v.$space-md;
-  background: rgba(0, 0, 0, 0.85);
-  border-bottom-right: 2px solid v.$color-border;
   font-size: v.$font-size-xs;
-  color: v.$color-text;
+  color: v.$color-text-secondary;
 }
 
 .debug-mode-label {
   display: flex;
   align-items: center;
-  gap: v.$space-xs;
+  gap: v.$space-xxs;
   cursor: pointer;
   user-select: none;
+  padding: v.$space-xxs v.$space-xs;
+  border-radius: v.$radius-pill;
+  background: none;
 
   input[type='checkbox'] {
     cursor: pointer;
@@ -120,10 +121,8 @@ body {
 .helmet-hue-control {
   display: flex;
   align-items: center;
-  padding: v.$space-xs v.$space-md;
-  background: v.$color-surface;
-  border-radius: v.$radius-pill;
-  border: 1px solid v.$color-border;
+  padding: 0;
+  @include m.surface-elevated();
 }
 
 .helmet-hue-slider {
@@ -307,14 +306,250 @@ body {
 
 .ui-overlay {
   position: absolute;
-  bottom: v.$space-md;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: v.$space-md;
+  pointer-events: none;
+  z-index: v.$z-overlay;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.home-debug-panel {
+  position: absolute;
+  top: v.$space-lg;
+  left: v.$space-lg;
+  z-index: v.$z-overlay;
+  width: 17rem;
+  max-height: calc(100% - 2 * v.$space-lg);
+  padding: v.$space-sm;
+  border-radius: v.$radius-sm;
+  background: v.$color-surface;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-sm;
+}
+
+.home-debug-title {
+  margin: 0 0 v.$space-xs;
+  font-size: v.$font-size-sm;
+}
+
+.home-debug-section {
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-xxs;
+}
+
+.home-debug-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: v.$space-xxs;
+  font-size: v.$font-size-xs;
+}
+
+.home-debug-label {
+  min-width: 1.5rem;
+}
+
+.home-debug-row input[type='range'] {
+  width: 100%;
+}
+
+.home-debug-val {
+  font-variant-numeric: tabular-nums;
+}
+
+.home-debug-textarea {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-size: v.$font-size-xs;
+}
+
+.customize-character-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: v.$space-xs;
+  width: 100%;
+  max-width: min(95vw, 36rem);
+}
+
+.customize-character-label {
+  font-size: v.$font-size-sm;
+  color: v.$color-text-secondary;
+  font-weight: v.$font-weight-semibold;
+}
+
+.customize-character-row {
+  display: flex;
+  align-items: center;
+  gap: v.$space-sm;
+  width: 100%;
+  flex-wrap: nowrap;
+  padding: v.$space-xs v.$space-sm;
+  @include m.surface-elevated();
+
+  .helmet-hue-control {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .helmet-hue-slider {
+    width: 100%;
+  }
+}
+
+.character-dropdown-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.character-avatar-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: v.$space-xs;
+  padding: v.$space-xs v.$space-md;
+  border-radius: v.$radius-pill;
+  border: 1px solid v.$color-border;
+  background: v.$color-surface;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: v.$font-size-sm;
+  color: v.$color-text;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+  transition: background v.$transition-base, box-shadow v.$transition-base, transform v.$transition-fast;
+
+  &:hover:not(:disabled) {
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: v.$color-btn-disabled-opacity;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.character-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: v.$radius-circle;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.12); // crop in slightly to focus on the face
+  }
+}
+
+.character-avatar-name {
+  white-space: nowrap;
+}
+
+.character-avatar-chevron {
+  font-size: 1rem;
+  color: v.$color-text-muted;
+}
+
+.character-avatar-menu {
+  position: absolute;
+  top: calc(100% + v.$space-xs);
+  left: 0;
+  z-index: v.$z-overlay;
+  padding: v.$space-xxs;
+  background: v.$color-surface;
+  border-radius: v.$radius-pill;
+  border: 1px solid v.$color-border;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: v.$space-xxs;
+  min-width: 10rem;
+}
+
+.character-avatar-option {
+  display: flex;
+  align-items: center;
+  gap: v.$space-xs;
+  padding: v.$space-xs v.$space-sm;
+  border-radius: v.$radius-pill;
+  border: none;
+  background: transparent;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-sm;
+  cursor: pointer;
+  text-align: left;
+  transition: background v.$transition-base;
+
+  &:hover {
+    background: v.$color-border-hover;
+  }
+}
+
+.character-avatar-option--selected {
+  background: rgba(v.$color-primary, 0.09);
+}
+
+.upload-btn--icon-only {
+  padding: v.$space-sm;
+  flex-shrink: 0;
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+.game-and-play-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: v.$space-sm;
-  z-index: v.$z-overlay;
+  width: 100%;
+  max-width: min(95vw, 28rem);
+}
+
+.play-btn {
+  width: 100%;
+  max-width: 18rem;
+  padding: v.$space-md v.$space-xl;
+  font-size: 1.25rem;
+  font-weight: v.$font-weight-semibold;
+  font-family: inherit;
+  color: v.$color-text;
+  background: v.$color-primary;
+  border: none;
+  border-radius: v.$radius-pill;
+  cursor: pointer;
+  transition: background v.$transition-fast, transform v.$transition-fast, opacity v.$transition-base;
+
+  &:hover:not(:disabled) {
+    background: v.$color-primary-hover;
+    transform: scale(1.02);
+  }
+
+  &:disabled {
+    opacity: v.$color-btn-disabled-opacity;
+    cursor: not-allowed;
+  }
 }
 
 .upload-hue-row {
@@ -332,7 +567,7 @@ body {
   background: v.$color-primary;
   border: none;
   border-radius: v.$radius-pill;
-  color: v.$color-text;
+  color: #ffffff;
   font-family: inherit;
   cursor: pointer;
   transition: transform v.$transition-fast, background v.$transition-base,
@@ -357,6 +592,7 @@ body {
   svg {
     width: 1.25rem;
     height: 1.25rem;
+    stroke: #ffffff;
   }
 }
 
@@ -481,6 +717,11 @@ body {
   display: flex;
   align-items: center;
   gap: v.$space-xs;
+
+  > button:first-of-type,
+  > button:last-of-type {
+    display: none;
+  }
 }
 
 .game-strip {
@@ -499,19 +740,26 @@ body {
   button {
     padding: v.$space-md v.$space-lg;
     min-width: 10rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: v.$radius-sm;
+    border-radius: v.$radius-pill;
+    border: 1px solid v.$color-border;
+    background: #ffffff;
     color: v.$color-text;
     font-family: inherit;
     font-size: v.$font-size-base;
     cursor: pointer;
-    transition: border-color v.$transition-fast, background v.$transition-fast;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+    transition: background v.$transition-base, box-shadow v.$transition-base, transform v.$transition-fast, border-color v.$transition-base;
+
+    &:hover {
+      background: #ffffff;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+      transform: translateY(-1px);
+    }
   }
 
   &.game-option--selected button {
     border-color: v.$color-primary;
-    background: rgba(v.$color-primary, 0.2);
+    background: #ffffff;
   }
 }
 
@@ -535,6 +783,55 @@ body {
     justify-content: center;
     gap: v.$space-md;
     color: v.$color-text;
+  }
+}
+
+// ─── Waterpark game (placeholder until full implementation) ───────────────────
+.waterpark-game-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: v.$color-bg;
+  z-index: 1000;
+}
+
+.waterpark-game-screen__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: v.$space-md;
+  padding: v.$space-xl;
+  text-align: center;
+}
+
+.waterpark-game-screen__title {
+  font-size: v.$font-size-lg;
+  font-weight: v.$font-weight-semibold;
+  color: v.$color-text;
+  margin: 0;
+}
+
+.waterpark-game-screen__message {
+  font-size: v.$font-size-base;
+  color: v.$color-text-secondary;
+  margin: 0;
+}
+
+.waterpark-game-screen__back {
+  padding: v.$space-sm v.$space-lg;
+  background: v.$color-primary;
+  border: none;
+  border-radius: v.$radius-pill;
+  color: v.$color-text;
+  font-family: inherit;
+  font-size: v.$font-size-base;
+  cursor: pointer;
+  transition: background v.$transition-fast;
+
+  &:hover {
+    background: v.$color-primary-hover;
   }
 }
 
@@ -820,6 +1117,167 @@ body {
   }
 }
 
+// ─── Waterpark game screen ─────────────────────────────────────────────────────
+.waterpark-game-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #00d4ff;
+  user-select: none;
+  -webkit-user-select: none;
+
+  &.waterpark-game-screen--error {
+    align-items: center;
+    justify-content: center;
+    gap: v.$space-md;
+    color: v.$color-text;
+  }
+}
+
+.waterpark-game-canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.waterpark-game-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #0a3d4d;
+  font-size: v.$font-size-lg;
+}
+
+.waterpark-game-countdown {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: v.$z-overlay;
+  pointer-events: none;
+}
+
+.waterpark-game-countdown-lights {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.waterpark-game-light {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: rgba(0, 60, 80, 0.9);
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  transition: background 0.15s ease-out;
+
+  &.waterpark-game-light--red.waterpark-game-light--on {
+    background: #e53935;
+    box-shadow: 0 0 20px rgba(229, 57, 53, 0.8);
+  }
+
+  &.waterpark-game-light--green.waterpark-game-light--on {
+    background: #43a047;
+    box-shadow: 0 0 20px rgba(67, 160, 71, 0.8);
+  }
+}
+
+.waterpark-game-go-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: v.$z-overlay + 1;
+  pointer-events: none;
+  animation: waterpark-game-go-fade 0.6s ease-out forwards;
+}
+
+@keyframes waterpark-game-go-fade {
+  0% { opacity: 1; transform: scale(1.2); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+.waterpark-game-go-text {
+  font-size: 4rem;
+  font-weight: bold;
+  color: #0d7377;
+  text-shadow: 0 0 30px rgba(13, 115, 119, 0.9);
+  letter-spacing: 0.2em;
+}
+
+.waterpark-game-hud {
+  position: absolute;
+  top: v.$space-md;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: v.$z-overlay;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+.waterpark-game-timer {
+  font-size: 1.75rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  color: #0a3d4d;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+.waterpark-game-hint {
+  font-size: 0.95rem;
+  color: rgba(10, 61, 77, 0.9);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.waterpark-game-finished-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: v.$z-overlay + 1;
+  pointer-events: none;
+  background: rgba(0, 180, 216, 0.4);
+}
+
+.waterpark-game-finished-time {
+  font-size: 3rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  color: #0a3d4d;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.8);
+  padding: v.$space-lg;
+}
+
+.waterpark-game-back-btn {
+  position: absolute;
+  top: v.$space-md;
+  right: v.$space-md;
+  z-index: v.$z-overlay;
+  padding: v.$space-sm v.$space-md;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: v.$radius-sm;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
 // ─── Game select debug panel (temporary) ─────────────────────────────────────
 .game-select-preview-wrap {
   position: absolute;
@@ -849,7 +1307,7 @@ body {
   max-height: 100%;
   overflow-y: auto;
   padding: v.$space-sm;
-  background: rgba(0, 0, 0, 0.9);
+  background: v.$color-surface;
   border-left: 1px solid v.$color-border;
   font-size: v.$font-size-xs;
   color: v.$color-text;

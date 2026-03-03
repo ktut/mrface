@@ -1,0 +1,11 @@
+@use './variables' as v;
+
+// Shared elevated surface styling for cards/controls so we do not duplicate
+// background, border, and shadow rules across components.
+@mixin surface-elevated($radius: v.$radius-pill) {
+  background: v.$color-surface;
+  border-radius: $radius;
+  border: 1px solid v.$color-border;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+

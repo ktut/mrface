@@ -113,7 +113,7 @@ export function AppProvider({
   const [characters, setCharactersState] = useState<CharacterEntry[]>(initialCharacters);
   const [selectedCharacterIndex, setSelectedCharacterIndexState] = useState(initialSelectedIndex);
   const [helmetHue, setHelmetHueState] = useState(initialHelmetHue);
-  const [selectedGameId, setSelectedGameIdState] = useState<string | null>(null);
+  const [selectedGameId, setSelectedGameIdState] = useState<string | null>('waterpark');
   const [debugMode, setDebugModeState] = useState(loadDebugMode);
 
   const setCharacters = useCallback((action: React.SetStateAction<CharacterEntry[]>) => {
@@ -186,7 +186,9 @@ export function AppProvider({
   useEffect(() => {
     const stored = loadStored();
     if (stored.helmetHue != null) setHelmetHueState(stored.helmetHue);
-    if (stored.selectedGameId !== undefined) setSelectedGameIdState(stored.selectedGameId);
+    if (stored.selectedGameId !== undefined && stored.selectedGameId !== null)
+      setSelectedGameIdState(stored.selectedGameId);
+    // else keep default 'waterpark'
     if (stored.selectedCharacterIndex != null && stored.charactersMeta?.length) {
       setSelectedCharacterIndexState(
         Math.min(stored.selectedCharacterIndex, stored.charactersMeta.length - 1),

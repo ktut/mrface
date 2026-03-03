@@ -1,0 +1,42 @@
+---
+description: MR. FACE app structure — home screen layout, Character vs Game, screens
+globs: src/App.tsx, src/context/AppContext.tsx, src/screens/*.tsx
+alwaysApply: false
+---
+
+# MR. FACE — App Structure & Home Screen
+
+Quick reference for the homepage layout and terminology.
+
+## Application name
+- Header title is always **"MR. FACE"** (replaces previous "Choose character" / "Choose game" titles).
+
+## Home screen layout (top → bottom)
+
+1. **Customize Character** (one row, left to right)
+   - **Character** dropdown: selects which character (head + face mesh + head topper) to use. Default: "Z baby". Each option is a saved character (from upload or test photo).
+   - **Upload** button: single button (no photo icon) to upload a new face photo; adds or replaces character.
+   - **Hue slider**: adjusts helmet (head topper) color.
+   - In this app, **Character** = head (face mesh + back shell) + head topper (currently helmet).
+
+2. **3D view**
+   - Canvas showing the selected character; orbit/zoom.
+
+3. **Game swiper**
+   - Selects the **game** (body/kart/vehicle and mode). Options: **Waterpark** (default), **Kart**.
+   - **Game** = body, kart, and game logic (e.g. Kart racing, Waterpark — to be defined elsewhere).
+
+4. **PLAY** button
+   - Starts the selected game with the selected character. Disabled when there are no characters.
+
+## Screens & flow
+- `home`: character customization + game selection + PLAY.
+- `cartGame`: Kart racing (existing). Entered when PLAY with game "Kart".
+- `waterparkGame`: placeholder "Coming soon". Entered when PLAY with game "Waterpark".
+- Game list: `GAMES` in `App.tsx`. Default `selectedGameId` in context is `'waterpark'`.
+
+## Key files
+- `src/App.tsx`: main shell, home UI, screen routing, PLAY handler.
+- `src/context/AppContext.tsx`: `characters`, `selectedCharacterIndex`, `helmetHue`, `selectedGameId`, etc.
+- `src/screens/CartGameScreen.tsx`: Kart game.
+- `src/screens/WaterparkGameScreen.tsx`: Waterpark placeholder.

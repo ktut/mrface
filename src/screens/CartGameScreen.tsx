@@ -7,6 +7,7 @@ import { InputManager } from '../engine/InputManager';
 import { buildKartCharacter } from '../character/KartCharacter';
 import { CONFIG } from '../config';
 import { RACE_CONFIG } from '../race/types';
+import { formatRaceTime, getCountdownLightStates } from '../race/ui';
 import { createInitialRaceState } from '../race/state';
 import { addTrackColliders, addTrackMeshes, KART_START_POSITION, KART_START_ROTATION } from '../race/track';
 
@@ -144,10 +145,10 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         scene.background = new THREE.Color(0x1a1a2e);
 
         const camera = new THREE.PerspectiveCamera(
-          50,
+          CONFIG.SCENE.CAMERA.FOV,
           container.clientWidth / container.clientHeight,
-          0.1,
-          500,
+          CONFIG.SCENE.CAMERA.NEAR,
+          CONFIG.SCENE.CAMERA.FAR,
         );
         camera.position.set(0, 1 + CAM_HEIGHT, -CAM_DISTANCE);
 
@@ -441,15 +442,11 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
     );
   }
 
-  const showCountdown = ready && racePhase === 'intro';
-  const showTimer = ready && racePhase === 'racing';
-  const showFinishedTime = racePhase === 'finished' && finishedTime != null;
+      const showCountdown = ready && racePhase === 'intro';
+      const showTimer = ready && racePhase === 'racing';
+      const showFinishedTime = racePhase === 'finished' && finishedTime != null;
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = (seconds % 60).toFixed(2);
-    return `${m}:${s.padStart(5, '0')}`;
-  };
+      const lights = getCountdownLightStates(introProgress);
 
   return (
     <div className="cart-game-screen">
@@ -458,10 +455,10 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
       {showCountdown && (
         <div className="cart-game-countdown" aria-live="polite">
           <div className="cart-game-countdown-lights">
-            <span className={`cart-game-light cart-game-light--red ${introProgress >= 0.25 ? 'cart-game-light--on' : ''}`} />
-            <span className={`cart-game-light cart-game-light--red ${introProgress >= 0.5 ? 'cart-game-light--on' : ''}`} />
-            <span className={`cart-game-light cart-game-light--red ${introProgress >= 0.75 ? 'cart-game-light--on' : ''}`} />
-            <span className={`cart-game-light cart-game-light--green ${introProgress >= 1 ? 'cart-game-light--on' : ''}`} />
+            <span className={`cart-game-light cart-game-light--red ${lights.red1 ? 'cart-game-light--on' : ''}`} />
+            <span className={`cart-game-light cart-game-light--red ${lights.red2 ? 'cart-game-light--on' : ''}`} />
+            <span className={`cart-game-light cart-game-light--red ${lights.red3 ? 'cart-game-light--on' : ''}`} />
+            <span className={`cart-game-light cart-game-light--green ${lights.green ? 'cart-game-light--on' : ''}`} />
           </div>
         </div>
       )}
@@ -471,18 +468,18 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         </div>
       )}
       {showTimer && !showFinishedTime && (
-        <div className="cart-game-race-hud">
+          <div className="cart-game-race-hud">
           <div className="cart-game-timer" aria-live="polite">
-            {formatTime(displayTime)}
+            {formatRaceTime(displayTime)}
           </div>
           <div className="cart-game-track-hint" aria-hidden>
             Drive to the checkered finish line.
           </div>
         </div>
       )}
-      {showFinishedTime && (
+      {showFinishedTime && finishedTime != null && (
         <div className="cart-game-finished-overlay" aria-live="polite">
-          <div className="cart-game-finished-time">Time: {formatTime(finishedTime)}</div>
+          <div className="cart-game-finished-time">Time: {formatRaceTime(finishedTime)}</div>
         </div>
       )}
       {ready && racePhase !== 'intro' && (

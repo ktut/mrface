@@ -6,7 +6,8 @@ import { FaceMeshBuilder } from './character/mesh-builder/FaceMeshBuilder';
 import { useApp } from './context/AppContext';
 import { SwipeableStrip } from './components/SwipeableStrip';
 import { CartGameScreen } from './screens/CartGameScreen';
-import { GameSelectPreview } from './components/GameSelectPreview';
+import { WaterparkGameScreen } from './screens/WaterparkGameScreen';
+import { HomeDebugPanel, type HomeAttachmentTransform } from './components/HomeDebugPanel';
 
 import testFaceAdultUrl from './assets/test/test-face-adult.png';
 
@@ -18,7 +19,10 @@ const HELMET_LIGHTNESS_MIN = 0.38;
 const HELMET_LIGHTNESS_MAX = 0.62;
 const THUMB_SIZE = 64;
 
-const GAMES = [{ id: 'cart', name: 'Kart Racing' }] as const;
+const GAMES = [
+  { id: 'waterpark', name: 'Waterpark' },
+  { id: 'cart', name: 'Kart' },
+] as const;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -60,18 +64,15 @@ export function App() {
   const sceneManagerRef = useRef<SceneManager | null>(null);
   const faceCaptureRef = useRef<FaceCapture | null>(null);
   const faceMeshBuilderRef = useRef<FaceMeshBuilder | null>(null);
-  const characterMenuRef = useRef<HTMLDivElement | null>(null);
-
   const {
     characters,
-    selectedCharacterIndex,
+    selectedCharacter,
     helmetHue,
     setHelmetHue,
     selectCharacter,
     setCharacters,
     addCharacter,
-    updateCharacter,
-    deleteCharacter,
+    selectedGameId,
     setSelectedGameId,
     clampedSelectedIndex,
     isDev,
@@ -79,10 +80,10 @@ export function App() {
     setDebugMode,
   } = useApp();
 
-  const [screen, setScreen] = useState<'home' | 'gameSelect' | 'cartGame'>('home');
+  const [screen, setScreen] = useState<'home' | 'cartGame' | 'waterparkGame'>('home');
   const [progress, setProgress] = useState(0);
   const [uploadDisabled, setUploadDisabled] = useState(true);
-  const [characterMenuIndex, setCharacterMenuIndex] = useState<number | null>(null);
+  const [characterMenuOpen, setCharacterMenuOpen] = useState(false);
 
   const applyHueToCurrentHead = useCallback((hue: number) => {
     const head = sceneManagerRef.current?.getCharacterHead();
@@ -179,6 +180,19 @@ export function App() {
     if (entry) applyHelmetHue(entry.headGroup, helmetHue);
   }, [characters, clampedSelectedIndex, helmetHue, applyHelmetHue]);
 
+  useEffect(() => {
+    sceneManagerRef.current?.setDebugMode(debugMode);
+  }, [debugMode]);
+
+  useEffect(() => {
+    const sceneManager = sceneManagerRef.current;
+    const entry = characters[clampedSelectedIndex];
+    if (!sceneManager) return;
+    const head = entry?.headGroup ?? null;
+    const gameId = (selectedGameId ?? 'waterpark') as 'cart' | 'waterpark';
+    void sceneManager.setHomeAttachment(head ? gameId : null, head);
+  }, [characters, clampedSelectedIndex, selectedGameId]);
+
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -199,60 +213,27 @@ export function App() {
     document.getElementById('file-input')?.click();
   }, []);
 
-  const handleCharacterSelect = useCallback(
-    (index: number) => {
-      if (index === selectedCharacterIndex) {
-        setCharacterMenuIndex(index);
-      } else {
-        setCharacterMenuIndex(null);
-        selectCharacter(index);
-      }
-    },
-    [selectedCharacterIndex, selectCharacter],
-  );
-
-  const handleRenameCharacter = useCallback(() => {
-    if (characterMenuIndex == null || characterMenuIndex >= characters.length) {
-      setCharacterMenuIndex(null);
-      return;
-    }
-    const currentName = characters[characterMenuIndex].name;
-    const newName =
-      typeof window !== 'undefined' && window.prompt
-        ? window.prompt('Rename character', currentName)
-        : currentName;
-    const trimmed = newName?.trim();
-    if (trimmed) updateCharacter(characterMenuIndex, { name: trimmed });
-    setCharacterMenuIndex(null);
-  }, [characterMenuIndex, characters, updateCharacter]);
-
-  const handleDeleteCharacter = useCallback(() => {
-    if (characterMenuIndex == null || characterMenuIndex >= characters.length) {
-      setCharacterMenuIndex(null);
-      return;
-    }
-    deleteCharacter(characterMenuIndex);
-    setCharacterMenuIndex(null);
-  }, [characterMenuIndex, characters.length, deleteCharacter]);
-
   useEffect(() => {
     applyHueToCurrentHead(helmetHue);
   }, [helmetHue, applyHueToCurrentHead]);
 
-  const handleChooseGame = useCallback(() => {
-    setScreen('gameSelect');
-  }, []);
+  const selectedGameIndex = GAMES.findIndex((g) => g.id === (selectedGameId ?? 'waterpark'));
+  const effectiveGameIndex = selectedGameIndex < 0 ? 0 : selectedGameIndex;
 
   const handleSelectGame = useCallback(
     (index: number) => {
       const game = GAMES[index];
-      if (game?.id === 'cart') {
-        setSelectedGameId('cart');
-        setScreen('cartGame');
-      }
+      if (game) setSelectedGameId(game.id);
     },
     [setSelectedGameId],
   );
+
+  const handlePlay = useCallback(() => {
+    const gameId = selectedGameId ?? 'waterpark';
+    setSelectedGameId(gameId);
+    if (gameId === 'cart') setScreen('cartGame');
+    else if (gameId === 'waterpark') setScreen('waterparkGame');
+  }, [selectedGameId, setSelectedGameId]);
 
   const handleExitToMenu = useCallback(() => {
     setSelectedGameId(null);
@@ -262,10 +243,11 @@ export function App() {
   return (
     <>
       {screen === 'cartGame' && <CartGameScreen onExitToMenu={handleExitToMenu} />}
+      {screen === 'waterparkGame' && <WaterparkGameScreen onExitToMenu={handleExitToMenu} />}
       <div
         className="app-shell"
-        style={{ display: screen === 'cartGame' ? 'none' : undefined }}
-        aria-hidden={screen === 'cartGame'}
+        style={{ display: screen === 'cartGame' || screen === 'waterparkGame' ? 'none' : undefined }}
+        aria-hidden={screen === 'cartGame' || screen === 'waterparkGame'}
       >
       {isDev && (
         <div className="debug-mode-toggle" role="group" aria-label="Debug mode">
@@ -292,9 +274,7 @@ export function App() {
           <div className="global-progress-fill" style={{ width: `${progress}%` }} />
         </div>
       </div>
-      <h1 className="app-title">
-        {screen === 'gameSelect' ? 'Choose game.' : 'Choose character.'}
-      </h1>
+      <h1 className="app-title">MR. FACE</h1>
       <div className="app-main">
         <div
           ref={containerRef}
@@ -302,50 +282,119 @@ export function App() {
           style={{ display: screen === 'home' ? 'block' : 'none' }}
           aria-hidden={screen !== 'home'}
         />
-        {screen === 'gameSelect' && <GameSelectPreview />}
-
+        {screen === 'home' && debugMode && (
+          <HomeDebugPanel
+            onChangeAttachment={(t: HomeAttachmentTransform) => {
+              sceneManagerRef.current?.updateHomeAttachmentTransform(t);
+            }}
+            onChangeBody={(t: HomeAttachmentTransform) => {
+              sceneManagerRef.current?.updateHomeDriverBodyTransform(t);
+            }}
+          />
+        )}
         <div className="ui-overlay">
           {screen === 'home' && (
             <>
-              <div className="upload-hue-row">
-                <div className="helmet-hue-control" role="group" aria-label="Helmet hue">
-                  <input
-                    id="helmet-hue-slider"
-                    type="range"
-                    min={0}
-                    max={360}
-                    value={helmetHue}
-                    onChange={(e) => setHelmetHueAndApply(Number(e.target.value))}
-                    className="helmet-hue-slider"
-                    style={{ '--thumb-hue': helmetHue } as React.CSSProperties}
-                    aria-valuemin={0}
-                    aria-valuemax={360}
-                    aria-valuenow={helmetHue}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="upload-btn"
-                  onClick={handleUploadClick}
-                  disabled={uploadDisabled}
-                  aria-label="Upload face"
-                >
-                  <span className="upload-btn-icon" aria-hidden>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="customize-character-section">
+                <span className="customize-character-label">Customize Character</span>
+                <div className="customize-character-row">
+                  <div className="character-dropdown-wrap" role="group" aria-label="Character">
+                    <button
+                      type="button"
+                      className="character-avatar-trigger"
+                      onClick={() => {
+                        if (characters.length === 0) return;
+                        setCharacterMenuOpen((open) => !open);
+                      }}
+                      disabled={characters.length === 0}
+                      aria-haspopup="listbox"
+                      aria-expanded={characterMenuOpen}
+                    >
+                      {selectedCharacter && (
+                        <span className="character-avatar">
+                          <img src={selectedCharacter.thumbnailUrl} alt="" />
+                        </span>
+                      )}
+                      <span className="character-avatar-name">
+                        {selectedCharacter?.name ?? 'Z baby'}
+                      </span>
+                      <span className="character-avatar-chevron" aria-hidden>
+                        {characterMenuOpen ? '▴' : '▾'}
+                      </span>
+                    </button>
+                    {characterMenuOpen && characters.length > 0 && (
+                      <div
+                        className="character-avatar-menu"
+                        role="listbox"
+                        aria-label="Select character"
+                      >
+                        {characters.map((c, i) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className={`character-avatar-option${
+                              i === clampedSelectedIndex ? ' character-avatar-option--selected' : ''
+                            }`}
+                            role="option"
+                            aria-selected={i === clampedSelectedIndex}
+                            onClick={() => {
+                              selectCharacter(i);
+                              setCharacterMenuOpen(false);
+                            }}
+                          >
+                            <span className="character-avatar">
+                              <img src={c.thumbnailUrl} alt="" />
+                            </span>
+                            <span className="character-avatar-name">{c.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="upload-btn upload-btn--icon-only"
+                    onClick={handleUploadClick}
+                    disabled={uploadDisabled}
+                    aria-label="Upload face"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                       <polyline points="17 8 12 3 7 8" />
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
-                  </span>
-                  <span className="upload-btn-icon" aria-hidden>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <path d="M21 15l-5-5L5 21" />
-                    </svg>
-                  </span>
-                </button>
+                  </button>
+                  <div className="helmet-hue-control" role="group" aria-label="Helmet color">
+                    <input
+                      id="helmet-hue-slider"
+                      type="range"
+                      min={0}
+                      max={360}
+                      value={helmetHue}
+                      onChange={(e) => setHelmetHueAndApply(Number(e.target.value))}
+                      className="helmet-hue-slider"
+                      style={{ '--thumb-hue': helmetHue } as React.CSSProperties}
+                      aria-valuemin={0}
+                      aria-valuemax={360}
+                      aria-valuenow={helmetHue}
+                      title="Helmet color"
+                    />
+                  </div>
+                </div>
               </div>
+              <input
+                id="file-input"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                aria-hidden
+                tabIndex={-1}
+              />
+            </>
+          )}
+
+          {screen === 'home' && (
+            <div className="game-and-play-section">
               {debugMode && (
                 <div className="test-image-buttons" role="group" aria-label="Load test image">
                   <button
@@ -382,67 +431,15 @@ export function App() {
                   </button>
                 </div>
               )}
-              <input
-                id="file-input"
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                aria-hidden
-                tabIndex={-1}
-              />
-            </>
-          )}
-
-          {screen === 'home' && characters.length > 0 && (
-            <SwipeableStrip
-              items={characters}
-              selectedIndex={clampedSelectedIndex}
-              onSelect={handleCharacterSelect}
-              getItemId={(c) => c.id}
-              renderItem={(char, _index, _selected) => (
-                <>
-                  <span className="character-option-thumb">
-                    <img src={char.thumbnailUrl} alt="" width={THUMB_SIZE} height={THUMB_SIZE} />
-                  </span>
-                  <span className="character-option-label">{char.name}</span>
-                </>
-              )}
-              className="character-swiper"
-              stripClassName="character-strip"
-              itemClassName="character-option"
-              selectedItemClassName="character-option--selected"
-              ariaLabel="Characters"
-              ariaLabelPrev="Previous character"
-              ariaLabelNext="Next character"
-            />
-          )}
-
-          {screen === 'home' && characters.length > 0 && (
-            <button
-              type="button"
-              className="choose-game-btn"
-              onClick={handleChooseGame}
-            >
-              Choose game
-            </button>
-          )}
-
-          {screen === 'gameSelect' && (
-            <>
-              <button
-                type="button"
-                className="back-from-games-btn"
-                onClick={() => setScreen('home')}
-              >
-                ‹ Back
-              </button>
               <SwipeableStrip
                 items={[...GAMES]}
-                selectedIndex={0}
+                selectedIndex={effectiveGameIndex}
                 onSelect={handleSelectGame}
                 getItemId={(g) => g.id}
                 renderItem={(game, _index, _selected) => (
-                  <span className="game-option-label">{game.name}</span>
+                  <span className="game-option-label">
+                    {game.id === 'waterpark' ? '🌊 Waterpark' : '🏎️ Kart'}
+                  </span>
                 )}
                 className="game-swiper"
                 stripClassName="game-strip"
@@ -452,42 +449,17 @@ export function App() {
                 ariaLabelPrev="Previous game"
                 ariaLabelNext="Next game"
               />
-            </>
+              <button
+                type="button"
+                className="play-btn"
+                onClick={handlePlay}
+                disabled={characters.length === 0}
+              >
+                PLAY
+              </button>
+            </div>
           )}
 
-          {characterMenuIndex !== null && screen === 'home' && (
-            <>
-              <div
-                className="character-menu-backdrop"
-                role="presentation"
-                aria-hidden
-                onClick={() => setCharacterMenuIndex(null)}
-              />
-              <div
-                ref={characterMenuRef}
-                className="character-menu"
-                role="menu"
-                aria-label="Character options"
-              >
-                <button
-                  type="button"
-                  className="character-menu-btn"
-                  role="menuitem"
-                  onClick={handleRenameCharacter}
-                >
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  className="character-menu-btn character-menu-btn--danger"
-                  role="menuitem"
-                  onClick={handleDeleteCharacter}
-                >
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
         </div>
       </div>
     </div>

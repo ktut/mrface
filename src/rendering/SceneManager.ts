@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CONFIG } from '../config';
+import { buildKartCharacter } from '../character/KartCharacter';
+import { buildWaterparkCharacter } from '../character/WaterparkCharacter';
 
 /**
  * SceneManager owns the Three.js renderer, camera, lights, and scene graph.
@@ -13,6 +15,9 @@ export class SceneManager {
   private camera:     THREE.PerspectiveCamera;
   private controls:   OrbitControls;
   private currentHead: THREE.Object3D | null = null;
+  private homeAttachment: THREE.Group | null = null;
+  private homeDriverBody: THREE.Group | null = null;
+  private debugMode = false;
 
   constructor(container: HTMLElement) {
     // ── Renderer ──────────────────────────────────────────────────────────────
@@ -161,6 +166,10 @@ export class SceneManager {
     return this.currentHead;
   }
 
+  setDebugMode(enabled: boolean) {
+    this.debugMode = enabled;
+  }
+
   /**
    * Replace the placeholder / previous head with a freshly built face group.
    * Pass null to clear the character and restore the placeholder.
@@ -183,15 +192,124 @@ export class SceneManager {
     this.controls.target.set(...CONFIG.SCENE.CAMERA.TARGET);
   }
 
+  /**
+   * Attach the selected game's body + vehicle under the current head for the home screen.
+   * Centers the attachment so the in-game driver head aligns with the origin (character head).
+   */
+  async setHomeAttachment(
+    gameId: 'cart' | 'waterpark' | null,
+    headGroup: THREE.Group | null,
+  ): Promise<void> {
+    if (this.homeAttachment) {
+      this.scene.remove(this.homeAttachment);
+      this.homeAttachment = null;
+      this.homeDriverBody = null;
+    }
+    if (!gameId || !headGroup) return;
+
+    try {
+      const builder =
+        gameId === 'cart'
+          ? (hg: THREE.Group) => buildKartCharacter(hg)
+          : (hg: THREE.Group) => buildWaterparkCharacter(hg);
+
+      const root = await builder(headGroup);
+      const driverHead = root.getObjectByName('driverHead');
+      const driverBody = root.getObjectByName('driverBody') as THREE.Group | null;
+      if (driverHead) {
+        // Compute world position of the in-game head, then shift the whole group
+        // so that head sits at the origin (same as characterHead).
+        root.updateMatrixWorld(true);
+        const headWorld = new THREE.Vector3();
+        (driverHead as THREE.Object3D).getWorldPosition(headWorld);
+        root.position.sub(headWorld);
+        (driverHead as THREE.Object3D).visible = false;
+      }
+      // Apply base home transform from config (kart/tube under head).
+      const home =
+        gameId === 'cart'
+          ? CONFIG.KART.HOME
+          : CONFIG.WATERPARK.HOME;
+      // Home transform is absolute relative to the head origin (match debug sliders).
+      root.position.set(home.OFFSET[0], home.OFFSET[1], home.OFFSET[2]);
+      root.rotation.set(home.ROTATION[0], home.ROTATION[1], home.ROTATION[2]);
+      root.scale.setScalar(home.SCALE);
+      this.homeAttachment = root;
+      this.homeDriverBody = driverBody ?? null;
+
+      // Apply BODY_HOME transform if present (absolute inside attachment space).
+      const bodyHome =
+        gameId === 'cart'
+          ? (CONFIG.KART as any).BODY_HOME
+          : (CONFIG.WATERPARK as any).BODY_HOME;
+      if (this.homeDriverBody && bodyHome) {
+        this.homeDriverBody.position.set(
+          bodyHome.OFFSET[0],
+          bodyHome.OFFSET[1],
+          bodyHome.OFFSET[2],
+        );
+        this.homeDriverBody.rotation.set(
+          bodyHome.ROTATION[0],
+          bodyHome.ROTATION[1],
+          bodyHome.ROTATION[2],
+        );
+        this.homeDriverBody.scale.setScalar(bodyHome.SCALE);
+      }
+      this.scene.add(root);
+    } catch (err) {
+      console.error('[SceneManager] setHomeAttachment', err);
+    }
+  }
+
+  /**
+   * Debug-only: tweak the home attachment transform (kart/tube + body) relative to the head.
+   */
+  updateHomeAttachmentTransform(params: {
+    offset: [number, number, number];
+    rotation: [number, number, number];
+    scale: number;
+  }) {
+    if (!this.homeAttachment) return;
+    const [ox, oy, oz] = params.offset;
+    const [rx, ry, rz] = params.rotation;
+    this.homeAttachment.position.set(ox, oy, oz);
+    this.homeAttachment.rotation.set(rx, ry, rz);
+    this.homeAttachment.scale.setScalar(params.scale);
+    this.homeAttachment.updateMatrixWorld(true);
+  }
+
+  /**
+   * Debug-only: tweak the driver body transform inside the home attachment.
+   */
+  updateHomeDriverBodyTransform(params: {
+    offset: [number, number, number];
+    rotation: [number, number, number];
+    scale: number;
+  }) {
+    if (!this.homeDriverBody) return;
+    const [ox, oy, oz] = params.offset;
+    const [rx, ry, rz] = params.rotation;
+    this.homeDriverBody.position.set(ox, oy, oz);
+    this.homeDriverBody.rotation.set(rx, ry, rz);
+    this.homeDriverBody.scale.setScalar(params.scale);
+    this.homeDriverBody.updateMatrixWorld(true);
+  }
+
   // ── Render loop ─────────────────────────────────────────────────────────────
 
   private animate() {
     requestAnimationFrame(() => this.animate());
     this.controls.update();
 
-    // Idle rotation on the character head
-    if (this.currentHead) {
-      this.currentHead.rotation.y += CONFIG.SCENE.IDLE_ROTATION_SPEED;
+    // Idle rotation: rotate head + attachment together when not in debug mode.
+    if (!this.debugMode) {
+      const spin = CONFIG.SCENE.IDLE_ROTATION_SPEED;
+      if (this.currentHead) {
+        this.currentHead.rotation.y += spin;
+      }
+      if (this.homeAttachment) {
+        this.homeAttachment.rotation.y += spin;
+      }
     }
 
     this.renderer.render(this.scene, this.camera);

@@ -15,17 +15,28 @@ $line-height-tight: 1;
 $line-height-status: 1.2;
 
 // ─── Colors ────────────────────────────────────────────────────────────────
-$color-bg: #0a0a0f;
-$color-text: #fff;
-$color-text-muted: #888;
-$color-text-secondary: #ccc;
+// Brighter, silver-gray UI theme. Background gradient is derived from these
+// tones; 3D scene background is kept in the same family for cohesion.
+$color-bg: #f3f4f6;              // light gray (approx Tailwind gray-100)
+$color-text: #111827;            // near-black for good contrast
+$color-text-muted: #6b7280;      // medium gray
+$color-text-secondary: #4b5563;  // slightly darker for headings/labels
 
 $color-primary: #e94560;
 $color-primary-hover: #ff6b81;
 
-$color-surface: rgba(20, 20, 28, 0.9);
-$color-border: rgba(255, 255, 255, 0.08);
-$color-border-hover: rgba(255, 255, 255, 0.15);
+// Surfaces are light and slightly translucent; borders use a soft slate tone.
+$color-surface: rgba(255, 255, 255, 0.96);
+$color-border: rgba(15, 23, 42, 0.08);
+$color-border-hover: rgba(15, 23, 42, 0.16);
+
+// Main app background gradient (used on <body>).
+$bg-gradient-main: radial-gradient(
+  circle at top,
+  #f9fafb 0%,
+  #f3f4f6 45%,
+  #d1d5db 100%
+);
 
 $color-btn-disabled-opacity: 0.45;
 

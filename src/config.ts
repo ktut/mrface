@@ -67,7 +67,9 @@ export const CONFIG = {
 
   // ─── Scene & rendering ──────────────────────────────────────────────────────
   SCENE: {
-    BACKGROUND: 0x252525,  // Dark gray so shadows from the 3D object are visible
+    // Light silver-gray so the 3D scene visually matches the UI background.
+    // Keep this in the same family as $bg-gradient-main in styles/_variables.scss.
+    BACKGROUND: 0xd1d5db,
     CAMERA: {
       FOV: 45,
       NEAR: 0.01,
@@ -116,13 +118,39 @@ export const CONFIG = {
       ROUGHNESS: 0.25,
       METALNESS: 0.85,
     },
-    /** Driver (torso + arms + legs + feet + head) placement and appearance. */
+    /** Home-screen attachment transform (kart + body relative to character head). */
+    HOME: {
+      OFFSET: [0.04, -1.14, 0.15] as [number, number, number],
+      ROTATION: [0, -1.59159265358979, 0] as [number, number, number],
+      SCALE: 1.36,
+    },
+    BODY_HOME: {
+      OFFSET: [-0.17, -0.07, 0] as [number, number, number],
+      ROTATION: [-0.231592653589793, 1.47840734641021, 0.298407346410207] as [
+        number,
+        number,
+        number,
+      ],
+      SCALE: 1,
+    },
+    /** Driver (SittingBaby OBJ or fallback primitive body) placement and appearance. */
     DRIVER: {
+      /** Driver body OBJ URL (SittingBaby). If set and load succeeds, used instead of primitive shapes. */
+      BODY_OBJ_URL:
+        '/models/SittingBaby_v1_L1.123c17d91afa-b7f2-4261-8c93-884662b4c79c/baby.obj' as string | null,
+      /** Target height (in world units) the SittingBaby model should be scaled to, before BODY_OBJ_SCALE. */
+      BODY_OBJ_TARGET_HEIGHT: 0.6,
+      /** Extra scalar applied after automatic scaling, for fine-tuning size. */
+      BODY_OBJ_SCALE: 1,
+      /** Rotation (radians) applied to body OBJ to align with kart: [x, y, z]. */
+      BODY_OBJ_ROTATION: [-Math.PI / 2, 0, 0] as [number, number, number],
+      /** Additional [x, y, z] offset applied to the OBJ after centering bottom at y=0. */
+      BODY_OBJ_OFFSET: [0, 0, 0] as [number, number, number],
       /** Position of the driver group relative to kart root. */
       POSITION: [-0.280, 0.230, -0.010] as [number, number, number],
       /** Rotation (radians) of the driver group: [x, y, z]. */
       ROTATION: [0.0284, 0.0084, 0.1384] as [number, number, number],
-      /** Torso (slim box) in driver local space. */
+      /** Torso (slim box) in driver local space — used only when GLB_URL is not set or load fails. */
       BODY: {
         WIDTH: 0.22,
         HEIGHT: 0.36,
@@ -170,15 +198,126 @@ export const CONFIG = {
         LEFT: { POSITION: [0.38, -0.03, 0.14] as [number, number, number] },
         RIGHT: { POSITION: [0.38, -0.11, -0.14] as [number, number, number] },
       },
-      /** Character head on top of body. */
+      /** Character head on top of body — scaled slightly larger so it fully covers the SittingBaby head. */
       HEAD: {
-        /** Head scale = SCALE_FACTOR / max(head bbox size) so head fits body. */
-        SCALE_FACTOR: 0.4,
+        /** Head scale = SCALE_FACTOR / max(head bbox size) so head fits body. Increased so it fully covers SittingBaby head. */
+        SCALE_FACTOR: 0.55,
         /** Position [x, y, z] of head in driver group space. */
         POSITION: [0.200, 0.560, 0.000] as [number, number, number],
         /** Rotation (radians) of head: [x, y, z]. */
         ROTATION: [-0.0516, 1.6584, -0.0116] as [number, number, number],
       },
+    },
+  },
+
+  // ─── Waterpark (waterslide game: tube + character, pink slide, aqua background) ─
+  WATERPARK: {
+    /** Slide surface color (bright pink). */
+    SLIDE_COLOR: 0xff69b4,
+    /** Background/sky color (aqua). */
+    BACKGROUND_COLOR: 0x00d4ff,
+    /** Slide length along Z (world units). */
+    SLIDE_LENGTH: 180,
+    /** Half-width of slide (X extent ±). */
+    SLIDE_HALF_WIDTH: 12,
+    /** Start line Z (tube starts just past this). */
+    START_LINE_Z: -8,
+    /** Finish line Z (crossing ends the run). */
+    FINISH_LINE_Z: 172,
+    /** Room before start and after finish for visuals. */
+    ROOM_BEFORE: 20,
+    ROOM_AFTER: 20,
+    /** Intro + countdown duration (seconds). */
+    INTRO_DURATION: 4,
+    /** Seconds to show final time before returning to menu. */
+    FINISHED_VIEW_TIME: 3,
+    /** Tube: optional OBJ from e.g. free3d.com (Sled Inner Tube). Place in /public/models/ and set URL. */
+    TUBE: {
+      OBJ_URL: '/models/waterpark-tube/inner-tube.obj',
+      /** Fallback: build a torus (inner-tube shape) if OBJ_URL is empty or load fails. */
+      FALLBACK_TORUS: { RADIUS: 0.5, TUBE: 0.18, RADIAL_SEGMENTS: 24, TUBULAR_SEGMENTS: 32 },
+      SCALE: 1.2,
+      ROTATION_X: -Math.PI / 2,
+      ROTATION_Z: 0,
+      /** Tube material (bright, fun). */
+      MATERIAL: { COLOR: 0xff4444, ROUGHNESS: 0.4, METALNESS: 0.1 },
+    },
+    /** Home-screen attachment transform (tube + body relative to character head). */
+    HOME: {
+      OFFSET: [0.02, -1.22, 0.04] as [number, number, number],
+      ROTATION: [0, 0, 0] as [number, number, number],
+      SCALE: 1,
+    },
+    BODY_HOME: {
+      OFFSET: [0.01, 0.39, 0.6] as [number, number, number],
+      ROTATION: [-1.85159265358979, -0.061592653589793, 0] as [number, number, number],
+      SCALE: 1.18,
+    },
+    /** Driver on tube: reuse kart driver config; position/rotation for sitting on tube. */
+    DRIVER: {
+      // If set, use a rigged GLB character on the tube (not currently used).
+      GLB_URL: '',
+      GLB_SCALE: 0.9,
+      GLB_ROTATION: [0, 0, 0] as [number, number, number],
+      GLB_HEAD_MESH_NAMES_TO_HIDE: ['Head', 'head'] as string[],
+      // If set, use the SittingBaby OBJ body (same model as Kart) for the tube driver.
+      BODY_OBJ_URL:
+        '/models/SittingBaby_v1_L1.123c17d91afa-b7f2-4261-8c93-884662b4c79c/baby.obj' as
+          string | null,
+      BODY_OBJ_TARGET_HEIGHT: 0.9,
+      BODY_OBJ_SCALE: 1,
+      BODY_OBJ_ROTATION: [0, 0, 0] as [number, number, number],
+      BODY_OBJ_OFFSET: [0, 0, 0] as [number, number, number],
+      POSITION: [0, 0.35, 0] as [number, number, number],
+      ROTATION: [-0.6, 0, 0] as [number, number, number],
+      BODY: {
+        WIDTH: 0.22,
+        HEIGHT: 0.22,
+        DEPTH: 0.14,
+        OFFSET_Y: 0.14,
+        POSITION: [0, 0, 0] as [number, number, number],
+        COLOR: 0x4488aa,
+      },
+      ARMS: {
+        RADIUS: 0.035,
+        LENGTH: 0.18,
+        COLOR: 0x4488aa,
+        LEFT: { POSITION: [0.02, 0.23, -0.09] as [number, number, number], ROTATION: [0.8, 0, 0.5] as [number, number, number] },
+        RIGHT: { POSITION: [0.02, 0.21, 0.09] as [number, number, number], ROTATION: [0.8, 0, -0.5] as [number, number, number] },
+      },
+      LEGS: {
+        RADIUS: 0.035,
+        LENGTH: 0.2,
+        COLOR: 0x4488aa,
+        LEFT: { POSITION: [0.08, -0.02, -0.05] as [number, number, number], ROTATION: [1.0, 0, 0.3] as [number, number, number] },
+        RIGHT: { POSITION: [0.08, -0.02, 0.05] as [number, number, number], ROTATION: [1.0, 0, -0.3] as [number, number, number] },
+      },
+      FEET: {
+        SIZE: [0.1, 0.05, 0.07] as [number, number, number],
+        COLOR: 0x333333,
+        LEFT: { POSITION: [0.18, -0.08, 0.08] as [number, number, number] },
+        RIGHT: { POSITION: [0.18, -0.08, -0.08] as [number, number, number] },
+      },
+      HEAD: {
+        SCALE_FACTOR: 0.4,
+        POSITION: [0.06, 0.46, 0] as [number, number, number],
+        ROTATION: [-0.1, 0.3, 0] as [number, number, number],
+      },
+    },
+    /** Strong sun (directional) for summer feel. */
+    LIGHTS: {
+      AMBIENT: { COLOR: 0xffffff, INTENSITY: 0.5 },
+      SUN: { COLOR: 0xfff8e0, INTENSITY: 1.8, POSITION: [40, 80, 30] as [number, number, number] },
+      FILL: { COLOR: 0xaaddff, INTENSITY: 0.5, POSITION: [-20, 20, -10] as [number, number, number] },
+    },
+    /** Water particle splash/slosh. */
+    PARTICLES: {
+      COUNT: 120,
+      SPAWN_RATE: 8,
+      LIFETIME: 1.2,
+      SIZE: 0.08,
+      SPEED_Y: 0.3,
+      SPEED_RAND: 0.15,
     },
   },
 

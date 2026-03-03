@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useApp } from '../context/AppContext';
 import { buildKartCharacter } from '../character/KartCharacter';
+import { buildWaterparkCharacter } from '../character/WaterparkCharacter';
 import { CONFIG } from '../config';
 
 type Vec3 = [number, number, number];
@@ -27,8 +28,8 @@ const rightFootPos0: Vec3 = [...CONFIG.KART.DRIVER.FEET.RIGHT.POSITION];
  */
 export function GameSelectPreview() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const { selectedCharacter, debugMode } = useApp();
-  const kartGroupRef = useRef<THREE.Group | null>(null);
+  const { selectedCharacter, selectedGameId, debugMode } = useApp();
+  const rootGroupRef = useRef<THREE.Group | null>(null);
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;
@@ -108,7 +109,7 @@ export function GameSelectPreview() {
       CONFIG.SCENE.CAMERA.NEAR,
       CONFIG.SCENE.CAMERA.FAR,
     );
-    camera.position.set(1.8, 1.2, 2.2);
+    camera.position.set(...CONFIG.SCENE.CAMERA.INITIAL_POSITION);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -127,7 +128,7 @@ export function GameSelectPreview() {
     controls.dampingFactor = CONFIG.SCENE.CONTROLS.DAMPING_FACTOR;
     controls.minDistance = 1;
     controls.maxDistance = 6;
-    controls.target.set(0, 0.5, 0);
+    controls.target.set(...CONFIG.SCENE.CAMERA.TARGET);
 
     const ambient = new THREE.AmbientLight(
       CONFIG.SCENE.LIGHTS.AMBIENT.COLOR,
@@ -179,20 +180,25 @@ export function GameSelectPreview() {
     pmrem.dispose();
     tex.dispose();
 
-    buildKartCharacter(selectedCharacter.headGroup)
-      .then((kartGroup) => {
+    const build =
+      (selectedGameId ?? 'waterpark') === 'cart'
+        ? () => buildKartCharacter(selectedCharacter.headGroup)
+        : () => buildWaterparkCharacter(selectedCharacter.headGroup);
+
+    build()
+      .then((rootGroup) => {
         if (cancelled) return;
-        kartGroupRef.current = kartGroup;
-        scene.add(kartGroup);
-        const driverBody = kartGroup.getObjectByName('driverBody');
-        const driverHead = kartGroup.getObjectByName('driverHead');
-        const torso = kartGroup.getObjectByName('driverTorso');
-        const leftArm = kartGroup.getObjectByName('driverLeftArm');
-        const rightArm = kartGroup.getObjectByName('driverRightArm');
-        const leftLeg = kartGroup.getObjectByName('driverLeftLeg');
-        const rightLeg = kartGroup.getObjectByName('driverRightLeg');
-        const leftFoot = kartGroup.getObjectByName('driverLeftFoot');
-        const rightFoot = kartGroup.getObjectByName('driverRightFoot');
+        rootGroupRef.current = rootGroup;
+        scene.add(rootGroup);
+        const driverBody = rootGroup.getObjectByName('driverBody');
+        const driverHead = rootGroup.getObjectByName('driverHead');
+        const torso = rootGroup.getObjectByName('driverTorso');
+        const leftArm = rootGroup.getObjectByName('driverLeftArm');
+        const rightArm = rootGroup.getObjectByName('driverRightArm');
+        const leftLeg = rootGroup.getObjectByName('driverLeftLeg');
+        const rightLeg = rootGroup.getObjectByName('driverRightLeg');
+        const leftFoot = rootGroup.getObjectByName('driverLeftFoot');
+        const rightFoot = rootGroup.getObjectByName('driverRightFoot');
         if (driverBody) {
           setDriverPos([driverBody.position.x, driverBody.position.y, driverBody.position.z]);
           setDriverRot([driverBody.rotation.x, driverBody.rotation.y, driverBody.rotation.z]);
@@ -200,6 +206,10 @@ export function GameSelectPreview() {
         if (driverHead) {
           setHeadPos([driverHead.position.x, driverHead.position.y, driverHead.position.z]);
           setHeadRot([driverHead.rotation.x, driverHead.rotation.y, driverHead.rotation.z]);
+          const headWorld = new THREE.Vector3();
+          driverHead.getWorldPosition(headWorld);
+          controls.target.copy(headWorld);
+          camera.position.set(headWorld.x, headWorld.y, headWorld.z + 2.5);
         }
         const bodyOffY = CONFIG.KART.DRIVER.BODY.OFFSET_Y;
         if (torso) {
@@ -219,7 +229,7 @@ export function GameSelectPreview() {
         if (rightFoot) setRightFootPos([rightFoot.position.x, rightFoot.position.y, rightFoot.position.z]);
       })
       .catch((err) => {
-        if (!cancelled) console.error('[GameSelectPreview] buildKartCharacter', err);
+        if (!cancelled) console.error('[GameSelectPreview] build preview character', err);
       });
 
     const onResize = () => {
@@ -233,7 +243,7 @@ export function GameSelectPreview() {
     let animationId = 0;
     const animate = () => {
       animationId = requestAnimationFrame(animate);
-      const kg = kartGroupRef.current;
+      const kg = rootGroupRef.current;
       const d = debugRef.current;
       const bodyOffY = CONFIG.KART.DRIVER.BODY.OFFSET_Y;
       if (kg) {
@@ -279,7 +289,7 @@ export function GameSelectPreview() {
 
     return () => {
       cancelled = true;
-      kartGroupRef.current = null;
+      rootGroupRef.current = null;
       window.removeEventListener('resize', onResize);
       cancelAnimationFrame(animationId);
       if (renderer.domElement.parentNode) {
@@ -288,7 +298,7 @@ export function GameSelectPreview() {
       renderer.dispose();
       sceneRef.current = null;
     };
-  }, [selectedCharacter?.headGroup]);
+  }, [selectedCharacter?.headGroup, selectedGameId]);
 
   const updateDriverPos = (i: 0 | 1 | 2, v: number) =>
     setDriverPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
@@ -317,21 +327,32 @@ export function GameSelectPreview() {
   const updateRightFootPos = (i: 0 | 1 | 2, v: number) =>
     setRightFootPos((p) => [...p.slice(0, i), v, ...p.slice(i + 1)] as Vec3);
 
-  const fmt3 = (v: Vec3) => `[${v.map((n) => n.toFixed(3)).join(', ')}]`;
-  const fmt4 = (v: Vec3) => `[${v.map((n) => n.toFixed(4)).join(', ')}]`;
-  const valueText = `DRIVER.POSITION: ${fmt3(driverPos)}
-DRIVER.ROTATION: ${fmt4(driverRot)}
-BODY.POSITION: ${fmt3(bodyPos)}
-ARMS.LEFT.POSITION: ${fmt3(leftArmPos)}
-ARMS.RIGHT.POSITION: ${fmt3(rightArmPos)}
-LEGS.LEFT.POSITION: ${fmt3(leftLegPos)}
-LEGS.LEFT.ROTATION: ${fmt4(leftLegRot)}
-LEGS.RIGHT.POSITION: ${fmt3(rightLegPos)}
-LEGS.RIGHT.ROTATION: ${fmt4(rightLegRot)}
-FEET.LEFT.POSITION: ${fmt3(leftFootPos)}
-FEET.RIGHT.POSITION: ${fmt3(rightFootPos)}
-HEAD.POSITION: ${fmt3(headPos)}
-HEAD.ROTATION: ${fmt4(headRot)}`;
+  const json = {
+    KART: {
+      DRIVER: {
+        POSITION: driverPos,
+        ROTATION: driverRot,
+        BODY: { POSITION: bodyPos },
+        ARMS: {
+          LEFT: { POSITION: leftArmPos },
+          RIGHT: { POSITION: rightArmPos },
+        },
+        LEGS: {
+          LEFT: { POSITION: leftLegPos, ROTATION: leftLegRot },
+          RIGHT: { POSITION: rightLegPos, ROTATION: rightLegRot },
+        },
+        FEET: {
+          LEFT: { POSITION: leftFootPos },
+          RIGHT: { POSITION: rightFootPos },
+        },
+        HEAD: {
+          POSITION: headPos,
+          ROTATION: headRot,
+        },
+      },
+    },
+  };
+  const valueText = JSON.stringify(json, null, 2);
 
   if (!selectedCharacter) return null;
 

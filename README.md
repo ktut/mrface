@@ -55,9 +55,11 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-1. Wait for **"Ready"** in the status bar (MediaPipe downloads ~8 MB of WASM on first load).
-2. Click **Upload Face Photo** or **Use Test Photo**.
-3. Your face mesh appears — drag to orbit, scroll to zoom.
+1. Wait for the default face to load (MediaPipe downloads ~8 MB of WASM on first load).
+2. **Customize Character**: pick a character from the dropdown (default "Z baby"), upload a new face photo, or adjust the helmet color with the hue slider.
+3. Choose a **game** via the swiper (Waterpark or Kart).
+4. Click **PLAY** to start the selected game with the selected character.
+5. On the home screen, drag the 3D view to orbit, scroll to zoom.
 
 ### Test Photo
 
@@ -122,6 +124,19 @@ await fetch('/api/characters', {
   headers: { 'Content-Type': 'application/json' },
 });
 ```
+
+---
+
+## App Structure & Home Screen (MR. FACE)
+
+- **Application name**: MR. FACE (shown in the top header).
+- **Character** (in this app): the **head** (face mesh + back shell) plus the **head topper** (currently a helmet). Controlled by:
+  - Character dropdown (select which saved character; default "Z baby").
+  - Upload button (add/replace face from photo).
+  - Hue slider (helmet color).
+- **Game**: the body/kart/vehicle and game mode. Selected via the **game swiper** at the bottom (Waterpark default, Kart second). Each game has its own screen (e.g. `CartGameScreen`, `WaterparkGameScreen`).
+- **PLAY** button: starts the currently selected game with the currently selected character.
+- **Screens**: `home` (character + game selection), `cartGame` (Kart racing), `waterparkGame` (placeholder until implemented). Game list is in `App.tsx` as `GAMES`; default game id is `waterpark`.
 
 ---
 

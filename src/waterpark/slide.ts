@@ -61,7 +61,7 @@ function createCheckeredTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Add waterslide meshes: bright pink slide strip, start/finish lines, and optional ground strip.
+ * Add waterslide meshes: pink half-cylinder (trough) slide, start/finish lines, and ground.
  */
 export function addSlideMeshes(scene: THREE.Scene): void {
   const slideMat = new THREE.MeshStandardMaterial({
@@ -71,11 +71,13 @@ export function addSlideMeshes(scene: THREE.Scene): void {
     metalness: 0.05,
   });
 
-  const slideGeo = new THREE.PlaneGeometry(HW * 2, L);
+  // Half-cylinder (trough): opening faces +Y, curved bottom is the slide. Axis along Z.
+  const slideGeo = new THREE.CylinderGeometry(HW, HW, L, 32, 1, true, Math.PI, Math.PI);
   const slideMesh = new THREE.Mesh(slideGeo, slideMat);
   slideMesh.rotation.x = -Math.PI / 2;
-  slideMesh.position.set(0, 0.015, SLIDE_CENTER_Z);
+  slideMesh.position.set(0, HW, SLIDE_CENTER_Z);
   slideMesh.receiveShadow = true;
+  slideMesh.castShadow = true;
   slideMesh.name = 'slideSurface';
   scene.add(slideMesh);
 
@@ -112,25 +114,41 @@ export function addSlideMeshes(scene: THREE.Scene): void {
   scene.add(groundMesh);
 }
 
-/** Create a semi-transparent water surface with vertices we can animate for real waves. */
+const WATER_OFFSET = 0.12; // water layer sits this far above the slide surface (inward in trough)
+
+/** Create curved water surface (same half-cylinder as slide) with vertices we can animate for waves. */
 export function createWaterMesh(): { mesh: THREE.Mesh; basePositions: Float32Array } {
-  const segmentsX = 24;
-  const segmentsZ = 96;
-  const geo = new THREE.PlaneGeometry(HW * 2, L, segmentsX, segmentsZ);
+  const radialSegments = 24;
+  const lengthSegments = 96;
+  const geo = new THREE.CylinderGeometry(HW, HW, L, radialSegments, lengthSegments, true, Math.PI, Math.PI);
   const positions = geo.getAttribute('position') as THREE.BufferAttribute;
-  const basePositions = new Float32Array(positions.array as Float32Array);
+  const posArray = positions.array as Float32Array;
+  const basePositions = new Float32Array(posArray.length);
+  for (let i = 0; i < posArray.length; i += 3) {
+    const x = posArray[i];
+    const y = posArray[i + 1];
+    const z = posArray[i + 2];
+    const r = Math.sqrt(x * x + z * z) || 1;
+    const scale = 1 - WATER_OFFSET / r;
+    basePositions[i] = x * scale;
+    basePositions[i + 1] = y;
+    basePositions[i + 2] = z * scale;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(basePositions.slice(), 3));
+  geo.attributes.position.needsUpdate = true;
+  geo.computeVertexNormals();
 
   const mat = new THREE.MeshStandardMaterial({
     color: 0x1fb5ff,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.88,
     roughness: 0.1,
     metalness: 0.25,
   });
 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(0, 0.022, SLIDE_CENTER_Z);
+  mesh.position.set(0, HW, SLIDE_CENTER_Z);
   mesh.receiveShadow = false;
   mesh.name = 'waterSurface';
   return { mesh, basePositions };

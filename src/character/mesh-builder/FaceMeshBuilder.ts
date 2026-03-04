@@ -111,8 +111,10 @@ export class FaceMeshBuilder {
 
     const faceMat = this.buildFaceMaterial(sourceImage, landmarks, headColor);
     report(55);
+    // Use graded skin color so back and body match the face (same saturation/contrast as face texture).
+    const skinColorForDisplay = this.applyFaceTextureGrading(headColor);
     const backMat = new THREE.MeshStandardMaterial({
-      color:           headColor,
+      color:           skinColorForDisplay,
       roughness:       CONFIG.HEAD.MATERIAL.BACK_ROUGHNESS,
       metalness:       CONFIG.HEAD.MATERIAL.BACK_METALNESS,
       side:             THREE.DoubleSide,  // back cap + side wall visible from all angles
@@ -137,6 +139,13 @@ export class FaceMeshBuilder {
     group.add(headwearGroup);
 
     report(100);
+    // Store graded skin color so body matches the face (same saturation/contrast as face texture).
+    group.userData.skinColor = {
+      r: skinColorForDisplay.r,
+      g: skinColorForDisplay.g,
+      b: skinColorForDisplay.b,
+    };
+
     // Shift so the face centre is at the scene origin.
     group.position.set(-bbox.cx, -bbox.cy, -bbox.cz);
 
@@ -538,6 +547,26 @@ export class FaceMeshBuilder {
   }
 
   // ── Skin colour sampling (derived from source image, no hard-coded tones) ────────
+
+  /**
+   * Apply the same saturation and contrast as the face texture so body/back match the face.
+   */
+  private applyFaceTextureGrading(color: THREE.Color): THREE.Color {
+    const saturation = CONFIG.HEAD.TEXTURE.SATURATION;
+    const contrast = CONFIG.HEAD.TEXTURE.CONTRAST;
+    let r = color.r, g = color.g, b = color.b;
+    r = (r - 0.5) * contrast + 0.5;
+    g = (g - 0.5) * contrast + 0.5;
+    b = (b - 0.5) * contrast + 0.5;
+    const L = 0.299 * r + 0.587 * g + 0.114 * b;
+    r = L + (r - L) * saturation;
+    g = L + (g - L) * saturation;
+    b = L + (b - L) * saturation;
+    r = Math.max(0, Math.min(1, r));
+    g = Math.max(0, Math.min(1, g));
+    b = Math.max(0, Math.min(1, b));
+    return new THREE.Color(r, g, b);
+  }
 
   /**
    * MediaPipe landmark indices for skin sampling:

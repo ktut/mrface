@@ -1,22 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { SceneManager } from './rendering/SceneManager';
 import { FaceCapture } from './character/face-capture/FaceCapture';
 import { FaceMeshBuilder } from './character/mesh-builder/FaceMeshBuilder';
 import { useApp } from './context/AppContext';
 import { SwipeableStrip } from './components/SwipeableStrip';
-import { CartGameScreen } from './screens/CartGameScreen';
-import { WaterparkGameScreen } from './screens/WaterparkGameScreen';
 import { HomeDebugPanel, type HomeAttachmentTransform } from './components/HomeDebugPanel';
+import { applyHelmetHue } from './character/helmetHue';
+
+const CartGameScreen = lazy(() =>
+  import('./screens/CartGameScreen').then((m) => ({ default: m.CartGameScreen })),
+);
+const WaterparkGameScreen = lazy(() =>
+  import('./screens/WaterparkGameScreen').then((m) => ({ default: m.WaterparkGameScreen })),
+);
 
 import testFaceAdultUrl from './assets/test/test-face-adult.png';
 
 /** Default face image on load: served from public/test-face.png (dev and prod). */
 const DEFAULT_TEST_FACE_URL = '/test-face.png';
 
-const HELMET_SATURATION = 0.35;
-const HELMET_LIGHTNESS_MIN = 0.38;
-const HELMET_LIGHTNESS_MAX = 0.62;
 const THUMB_SIZE = 64;
 
 const GAMES = [
@@ -41,22 +43,6 @@ function createThumbnailFromImage(img: HTMLImageElement): string {
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(img, 0, 0, THUMB_SIZE, THUMB_SIZE);
   return canvas.toDataURL('image/jpeg', 0.75);
-}
-
-function applyHelmetHue(head: THREE.Object3D, hue: number) {
-  const headwear = head.getObjectByName('headwear') as THREE.Group | undefined;
-  if (!headwear) return;
-  const helmet = headwear.getObjectByName('helmet');
-  if (!helmet) return;
-  const t = hue / 360;
-  const lightness = HELMET_LIGHTNESS_MIN + t * (HELMET_LIGHTNESS_MAX - HELMET_LIGHTNESS_MIN);
-  const color = new THREE.Color().setHSL(t, HELMET_SATURATION, lightness);
-  helmet.traverse((child) => {
-    if (child instanceof THREE.Mesh && child.material) {
-      const mat = child.material as THREE.MeshStandardMaterial;
-      if (mat.color) mat.color.copy(color);
-    }
-  });
 }
 
 export function App() {
@@ -109,7 +95,6 @@ export function App() {
       setUploadDisabled(true);
       try {
         setProgress(5);
-        await faceCapture.detectFromImage(img);
         const landmarks = await faceCapture.detectFromImage(img);
         if (!landmarks) {
           setProgress(0);
@@ -172,6 +157,13 @@ export function App() {
         setProgress(0);
       }
     })();
+
+    return () => {
+      sceneManager.dispose();
+      sceneManagerRef.current = null;
+      faceCaptureRef.current = null;
+      faceMeshBuilderRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -183,6 +175,21 @@ export function App() {
   useEffect(() => {
     sceneManagerRef.current?.setDebugMode(debugMode);
   }, [debugMode]);
+
+  useEffect(() => {
+    const sm = sceneManagerRef.current;
+    if (!sm) return;
+    if (screen === 'home') sm.resume();
+    else sm.pause();
+  }, [screen]);
+
+  const handleChangeAttachment = useCallback((t: HomeAttachmentTransform) => {
+    sceneManagerRef.current?.updateHomeAttachmentTransform(t);
+  }, []);
+
+  const handleChangeBody = useCallback((t: HomeAttachmentTransform) => {
+    sceneManagerRef.current?.updateHomeDriverBodyTransform(t);
+  }, []);
 
   useEffect(() => {
     const sceneManager = sceneManagerRef.current;
@@ -242,8 +249,10 @@ export function App() {
 
   return (
     <>
-      {screen === 'cartGame' && <CartGameScreen onExitToMenu={handleExitToMenu} />}
-      {screen === 'waterparkGame' && <WaterparkGameScreen onExitToMenu={handleExitToMenu} />}
+      <Suspense fallback={<div className="app-shell app-loading">Loading game…</div>}>
+        {screen === 'cartGame' && <CartGameScreen onExitToMenu={handleExitToMenu} />}
+        {screen === 'waterparkGame' && <WaterparkGameScreen onExitToMenu={handleExitToMenu} />}
+      </Suspense>
       <div
         className="app-shell"
         style={{ display: screen === 'cartGame' || screen === 'waterparkGame' ? 'none' : undefined }}
@@ -284,19 +293,14 @@ export function App() {
         />
         {screen === 'home' && debugMode && (
           <HomeDebugPanel
-            onChangeAttachment={(t: HomeAttachmentTransform) => {
-              sceneManagerRef.current?.updateHomeAttachmentTransform(t);
-            }}
-            onChangeBody={(t: HomeAttachmentTransform) => {
-              sceneManagerRef.current?.updateHomeDriverBodyTransform(t);
-            }}
+            onChangeAttachment={handleChangeAttachment}
+            onChangeBody={handleChangeBody}
           />
         )}
         <div className="ui-overlay">
           {screen === 'home' && (
             <>
               <div className="customize-character-section">
-                <span className="customize-character-label">Customize Character</span>
                 <div className="customize-character-row">
                   <div className="character-dropdown-wrap" role="group" aria-label="Character">
                     <button

@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { VehicleController } from '../physics/VehicleController';
 import { InputManager } from '../engine/InputManager';
 import { buildKartCharacter } from '../character/KartCharacter';
+import { applyHelmetHue } from '../character/helmetHue';
 import { CONFIG } from '../config';
 import { RACE_CONFIG } from '../race/types';
 import { formatRaceTime, getCountdownLightStates } from '../race/ui';
@@ -56,7 +57,7 @@ const LOCAL_PLAYER_ID = 'local';
 
 export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const { selectedCharacter } = useApp();
+  const { selectedCharacter, helmetHue } = useApp();
   const [paused, setPaused] = useState(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +78,8 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
   const introLookAtEndRef = useRef(new THREE.Vector3());
   const _introLookAtRef = useRef(new THREE.Vector3());
   const _introPosRef = useRef(new THREE.Vector3());
+  const lastDisplayTimeUpdateRef = useRef(0);
+  const lastIntroProgressUpdateRef = useRef(0);
 
   // Camera orbit: spherical around kart. yaw = horizontal, pitch = elevation (0 = horizontal).
   const CAM_DISTANCE = 6;
@@ -191,7 +194,9 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         const kartGroup = new THREE.Group();
         scene.add(kartGroup);
 
-        const kartCharacter = await buildKartCharacter(selectedCharacter.headGroup);
+        const kartCharacter = await buildKartCharacter(selectedCharacter.headGroup, { usePrimitiveBody: true });
+        const driverHead = kartCharacter.getObjectByName('driverHead');
+        if (driverHead) applyHelmetHue(driverHead, helmetHue);
         kartGroup.add(kartCharacter);
 
         const input = new InputManager();
@@ -259,7 +264,10 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         }
         const elapsed = now - (introStartTimeRef.current ?? now);
         const progress = Math.min(1, elapsed / RACE_CONFIG.INTRO_DURATION);
-        setIntroProgress(progress);
+        if (now - lastIntroProgressUpdateRef.current >= 0.1) {
+          setIntroProgress(progress);
+          lastIntroProgressUpdateRef.current = now;
+        }
         const center = introOrbitCenterRef.current;
         const r = introOrbitRadiusHRef.current;
         // Start in front of kart (angle = PI/2), orbit around to behind (angle = -PI/2). Hold in front briefly then rotate.
@@ -308,7 +316,10 @@ export function CartGameScreen({ onExitToMenu }: CartGameScreenProps) {
         if (throttle > 0 || brake > 0) chassis.wakeUp();
         g.vehicle.applyInput(throttle, brake, steer);
         raceStateRef.current.currentTime = now - (raceStateRef.current.startTime ?? now);
-        setDisplayTime(raceStateRef.current.currentTime);
+        if (now - lastDisplayTimeUpdateRef.current >= 0.1) {
+          setDisplayTime(raceStateRef.current.currentTime);
+          lastDisplayTimeUpdateRef.current = now;
+        }
 
         if (t.z >= RACE_CONFIG.FINISH_LINE_Z) {
           raceStateRef.current.phase = 'finished';

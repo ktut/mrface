@@ -2,36 +2,26 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CONFIG } from '../config';
+import { getHeadSkinColor } from './headSkinColor';
 
 const WP = CONFIG.WATERPARK;
 const TUBE = WP.TUBE;
 const DRIVER = WP.DRIVER;
 
-function getHeadSkinColor(headGroup: THREE.Group): THREE.Color {
-  const fallback = new THREE.Color(CONFIG.HEAD.MATERIAL.SKIN_FALLBACK);
-  let found: THREE.Color | null = null;
-
-  headGroup.traverse((obj) => {
-    if (found) return;
-    if (obj instanceof THREE.Mesh && obj.material) {
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      if (mats.length > 1) {
-        const backMat = mats[1] as THREE.MeshStandardMaterial;
-        if (backMat.color instanceof THREE.Color) {
-          found = backMat.color.clone();
-        }
-      }
-    }
-  });
-
-  return found ?? fallback;
+export interface BuildWaterparkCharacterOptions {
+  /** When true, use primitive body only (no GLB/OBJ). Use in-game so the driver is exactly the custom head + simple body. */
+  usePrimitiveBody?: boolean;
 }
 
 /**
  * Builds a Group: inner tube mesh (OBJ or torus fallback) + driver body (rigged GLB or primitives) + cloned character head.
  * Character sits on the tube; root moves along the slide path.
  */
-export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<THREE.Group> {
+export async function buildWaterparkCharacter(
+  headGroup: THREE.Group,
+  options?: BuildWaterparkCharacterOptions,
+): Promise<THREE.Group> {
+  const usePrimitiveBody = options?.usePrimitiveBody ?? false;
   const root = new THREE.Group();
   root.name = 'waterparkCharacter';
 
@@ -57,6 +47,7 @@ export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<T
             color: TUBE.MATERIAL.COLOR,
             roughness: TUBE.MATERIAL.ROUGHNESS,
             metalness: TUBE.MATERIAL.METALNESS,
+            envMapIntensity: 0, // Lit with head/body by scene lights only
           });
           obj.castShadow = true;
           obj.receiveShadow = true;
@@ -80,8 +71,8 @@ export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<T
 
   let usedCustomModel = false;
 
-  // Prefer a rigged GLB if configured.
-  if (DRIVER.GLB_URL) {
+  // Prefer a rigged GLB if configured (skip when usePrimitiveBody to show only custom head in-game).
+  if (!usePrimitiveBody && DRIVER.GLB_URL) {
     try {
       const gltfLoader = new GLTFLoader();
       const gltf = await new Promise<{ scene: THREE.Group }>((resolve, reject) => {
@@ -107,19 +98,29 @@ export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<T
     }
   }
 
-  // Otherwise, if a SittingBaby OBJ body is configured, reuse it so the tube
-  // game matches the kart game.
-  if (!usedCustomModel && DRIVER.BODY_OBJ_URL) {
+  // Otherwise, if a SittingBaby OBJ body is configured, reuse it (skip when usePrimitiveBody).
+  if (!usePrimitiveBody && !usedCustomModel && DRIVER.BODY_OBJ_URL) {
     try {
       const bodyLoader = new OBJLoader();
-      const model = await new Promise<THREE.Group>((resolve, reject) => {
-        bodyLoader.load(DRIVER.BODY_OBJ_URL as string, resolve, undefined, reject);
-      });
+      const textureLoader = new THREE.TextureLoader();
+      const bodyDiffuseMapUrl = DRIVER.BODY_DIFFUSE_MAP_URL ?? null;
+      const [model, diffuseMap] = await Promise.all([
+        new Promise<THREE.Group>((resolve, reject) => {
+          bodyLoader.load(DRIVER.BODY_OBJ_URL as string, resolve, undefined, reject);
+        }),
+        bodyDiffuseMapUrl
+          ? new Promise<THREE.Texture | null>((resolve, reject) => {
+              textureLoader.load(bodyDiffuseMapUrl, resolve, undefined, reject);
+            }).catch(() => null)
+          : Promise.resolve(null as THREE.Texture | null),
+      ]);
 
       const bodyMat = new THREE.MeshStandardMaterial({
-        color: skinColor,
+        color: diffuseMap ? 0xffffff : skinColor,
+        map: diffuseMap ?? undefined,
         roughness: CONFIG.HEAD.MATERIAL.BACK_ROUGHNESS,
         metalness: CONFIG.HEAD.MATERIAL.BACK_METALNESS,
+        envMapIntensity: 0, // Lit with head by scene lights only
       });
 
       model.traverse((obj) => {
@@ -157,7 +158,10 @@ export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<T
   if (!usedCustomModel) {
     const bodyCfg = DRIVER.BODY;
     const bodyGeo = new THREE.BoxGeometry(bodyCfg.WIDTH, bodyCfg.HEIGHT, bodyCfg.DEPTH);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: skinColor });
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: skinColor,
+      envMapIntensity: 0,
+    });
     const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
     bodyMesh.name = 'driverTorso';
     bodyMesh.castShadow = true;
@@ -171,7 +175,10 @@ export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<T
 
     const armsCfg = DRIVER.ARMS;
     const armGeo = new THREE.CylinderGeometry(armsCfg.RADIUS, armsCfg.RADIUS, armsCfg.LENGTH, 8);
-    const armMat = new THREE.MeshStandardMaterial({ color: skinColor });
+    const armMat = new THREE.MeshStandardMaterial({
+      color: skinColor,
+      envMapIntensity: 0,
+    });
     const leftArm = new THREE.Mesh(armGeo.clone(), armMat.clone());
     leftArm.name = 'driverLeftArm';
     leftArm.castShadow = true;
@@ -189,7 +196,10 @@ export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<T
 
     const legsCfg = DRIVER.LEGS;
     const legGeo = new THREE.CylinderGeometry(legsCfg.RADIUS, legsCfg.RADIUS, legsCfg.LENGTH, 8);
-    const legMat = new THREE.MeshStandardMaterial({ color: skinColor });
+    const legMat = new THREE.MeshStandardMaterial({
+      color: skinColor,
+      envMapIntensity: 0,
+    });
     const leftLeg = new THREE.Mesh(legGeo.clone(), legMat.clone());
     leftLeg.name = 'driverLeftLeg';
     leftLeg.castShadow = true;
@@ -207,7 +217,10 @@ export async function buildWaterparkCharacter(headGroup: THREE.Group): Promise<T
 
     const feetCfg = DRIVER.FEET;
     const footGeo = new THREE.BoxGeometry(...feetCfg.SIZE);
-    const footMat = new THREE.MeshStandardMaterial({ color: feetCfg.COLOR });
+    const footMat = new THREE.MeshStandardMaterial({
+      color: feetCfg.COLOR,
+      envMapIntensity: 0,
+    });
     const leftFoot = new THREE.Mesh(footGeo.clone(), footMat.clone());
     leftFoot.name = 'driverLeftFoot';
     leftFoot.castShadow = true;
@@ -255,6 +268,7 @@ function createTorusTube(): THREE.Mesh {
     color: TUBE.MATERIAL.COLOR,
     roughness: TUBE.MATERIAL.ROUGHNESS,
     metalness: TUBE.MATERIAL.METALNESS,
+    envMapIntensity: 0,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;

@@ -19,6 +19,10 @@ export class SceneManager {
   private homeAttachment: THREE.Group | null = null;
   private homeDriverBody: THREE.Group | null = null;
   private debugMode = false;
+  private animationId: number = 0;
+  private paused = false;
+  private disposed = false;
+  private boundResize = () => this.handleResize();
 
   constructor(container: HTMLElement) {
     // ── Renderer ──────────────────────────────────────────────────────────────
@@ -70,14 +74,46 @@ export class SceneManager {
     this.scene.add(this.characterRoot);
 
     // ── Resize handler ────────────────────────────────────────────────────────
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    window.addEventListener('resize', this.boundResize);
 
     // ── Render loop ───────────────────────────────────────────────────────────
     this.animate();
+  }
+
+  private handleResize() {
+    if (this.disposed) return;
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  /** Pause the render loop (e.g. when a game screen is active). */
+  pause(): void {
+    this.paused = true;
+    if (this.animationId !== 0) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = 0;
+    }
+  }
+
+  /** Resume the render loop (e.g. when returning to home). */
+  resume(): void {
+    this.paused = false;
+    if (this.animationId === 0 && !this.disposed) this.animate();
+  }
+
+  /** Stop the render loop and remove listeners. Call when unmounting. */
+  dispose(): void {
+    this.disposed = true;
+    if (this.animationId !== 0) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = 0;
+    }
+    window.removeEventListener('resize', this.boundResize);
+    this.renderer.dispose();
+    if (this.renderer.domElement.parentNode) {
+      this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+    }
   }
 
   // ── Lights ──────────────────────────────────────────────────────────────────
@@ -304,7 +340,9 @@ export class SceneManager {
   // ── Render loop ─────────────────────────────────────────────────────────────
 
   private animate() {
-    requestAnimationFrame(() => this.animate());
+    if (this.disposed || this.paused) return;
+    this.animationId = requestAnimationFrame(() => this.animate());
+
     this.controls.update();
 
     // Idle rotation: rotate the combined character root so head + body + vehicle stay locked.

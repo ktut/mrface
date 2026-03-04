@@ -51,6 +51,15 @@ body {
   height: 100%;
 }
 
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: v.$color-text-secondary;
+  font-size: v.$font-size-sm;
+}
+
 .global-progress {
   flex-shrink: 0;
   width: 100%;
@@ -534,7 +543,7 @@ body {
   font-size: 1.25rem;
   font-weight: v.$font-weight-semibold;
   font-family: inherit;
-  color: v.$color-text;
+  color: #ffffff;
   background: v.$color-primary;
   border: none;
   border-radius: v.$radius-pill;
@@ -980,6 +989,7 @@ body {
 }
 
 .cart-game-pause-btn {
+  @include m.surface-elevated(v.$radius-pill);
   position: absolute;
   top: v.$space-md;
   right: v.$space-md;
@@ -987,18 +997,21 @@ body {
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: v.$radius-sm;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: v.$color-text;
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
+  transition: background v.$transition-base, box-shadow v.$transition-base, transform v.$transition-fast;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.7);
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+    transform: translateY(-1px);
   }
 }
 
@@ -1258,23 +1271,24 @@ body {
 }
 
 .waterpark-game-back-btn {
+  @include m.surface-elevated(v.$radius-pill);
   position: absolute;
   top: v.$space-md;
   right: v.$space-md;
   z-index: v.$z-overlay;
   padding: v.$space-sm v.$space-md;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: v.$radius-sm;
-  color: #fff;
+  color: v.$color-text;
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: bold;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: background v.$transition-base, box-shadow v.$transition-base, transform v.$transition-fast;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.5);
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+    transform: translateY(-1px);
   }
 }
 

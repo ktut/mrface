@@ -138,6 +138,9 @@ export const CONFIG = {
       /** Driver body OBJ URL (SittingBaby). If set and load succeeds, used instead of primitive shapes. */
       BODY_OBJ_URL:
         '/models/SittingBaby_v1_L1.123c17d91afa-b7f2-4261-8c93-884662b4c79c/baby.obj' as string | null,
+      /** Diffuse (albedo) texture for the body OBJ. Applied when set and body OBJ is used. */
+      BODY_DIFFUSE_MAP_URL:
+        '/models/SittingBaby_v1_L1.123c17d91afa-b7f2-4261-8c93-884662b4c79c/SittingBabyDiffuseMap.png' as string | null,
       /** Target height (in world units) the SittingBaby model should be scaled to, before BODY_OBJ_SCALE. */
       BODY_OBJ_TARGET_HEIGHT: 0.6,
       /** Extra scalar applied after automatic scaling, for fine-tuning size. */
@@ -264,6 +267,9 @@ export const CONFIG = {
       BODY_OBJ_URL:
         '/models/SittingBaby_v1_L1.123c17d91afa-b7f2-4261-8c93-884662b4c79c/baby.obj' as
           string | null,
+      /** Diffuse map for body OBJ (same as Kart when using SittingBaby). */
+      BODY_DIFFUSE_MAP_URL:
+        '/models/SittingBaby_v1_L1.123c17d91afa-b7f2-4261-8c93-884662b4c79c/SittingBabyDiffuseMap.png' as string | null,
       BODY_OBJ_TARGET_HEIGHT: 0.9,
       BODY_OBJ_SCALE: 1,
       BODY_OBJ_ROTATION: [0, 0, 0] as [number, number, number],
